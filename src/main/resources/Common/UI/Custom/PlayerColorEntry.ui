@@ -1,0 +1,51 @@
+$C = "Common.ui";
+
+Group {
+  LayoutMode: Left;
+  Anchor: (Height: 30, Bottom: 4);
+  FlexWeight: 1;
+  Background: $C.@InputBoxBackground;
+  Padding: (Top: 5, Bottom: 3);
+
+  Label #EntryName {
+    Style: (FontSize: 15, RenderBold: true, TextColor: #ffffff);
+    Anchor: (Left: 10, Vertical: 0);
+  }
+
+  Label { FlexWeight: 1; }
+
+  Group #ColorSwatch {
+    Anchor: (Width: 24, Height: 20, Vertical: 0);
+    Background: #ff0000ff;
+  }
+
+  Label { Anchor: (Width: 6); }
+
+  Label #HexLabel {
+    Style: (FontSize: 13, TextColor: #93844c);
+    Anchor: (Vertical: 0);
+  }
+
+  Label { Anchor: (Width: 6); }
+
+  TextButton #EditButton {
+    Anchor: (Vertical: 0);
+    Padding: (Left: 6, Right: 6, Top: 4, Bottom: 4);
+    Text: "Edit";
+    Style: TextButtonStyle(
+      Default: (LabelStyle: (FontSize: 13, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+      Hovered: (LabelStyle: (FontSize: 13, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+      Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+      Sounds: $C.@ButtonSounds,
+    );
+  }
+
+  Label { Anchor: (Width: 4); }
+
+  $C.@CancelTextButton #RemoveButton {
+    Anchor: (Right: 10, Vertical: 0);
+    Padding: (Left: 6, Right: 6, Top: 4, Bottom: 4);
+    Text: "Remove";
+    Overscroll: false;
+  }
+}

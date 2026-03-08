@@ -1,0 +1,10 @@
+{
+  "Spawners": [
+    {
+      "SpawnerId": "BC_Bubble",
+      "FixedRotation": false
+    }
+  ],
+  "LifeSpan": 3,
+  "IsImportant": false
+}

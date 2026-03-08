@@ -1,0 +1,110 @@
+$C = "Common.ui";
+
+@BtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 13, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+  Hovered: (LabelStyle: (FontSize: 13, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+  Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+  Sounds: $C.@ButtonSounds,
+);
+
+$C.@PageOverlay {
+  $C.@DecoratedContainer {
+    Anchor: (Width: 520, Height: 600);
+
+    #Title {
+      Group {
+        TextButton #BackButton {
+          Anchor: (Left: 12, Top: 4, Width: 64, Height: 24);
+          Text: "< Back";
+          Style: @BtnStyle;
+        }
+
+        Label #TitleLabel {
+          Anchor: (Height: 28, Horizontal: 0);
+          Style: (FontSize: 20, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center);
+          Text: "HIDDEN & MUTED";
+        }
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+
+      // === Hidden Players Section ===
+      Label {
+        Anchor: (Top: 8, Left: 14);
+        Style: (FontSize: 16, RenderBold: true, TextColor: #93844c);
+        Text: "Hidden Players";
+      }
+
+      Group #HideRow {
+        LayoutMode: Left;
+        Padding: (Top: 4, Bottom: 4, Left: 14, Right: 14);
+        $C.@TextField #HideInput {
+          FlexWeight: 1;
+          Anchor: (Height: 28);
+          Style: (FontSize: 14, TextColor: #ffffff(0.85));
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #HideButton {
+          Anchor: (Width: 50, Height: 28);
+          Text: "Hide";
+          Style: @BtnStyle;
+        }
+      }
+
+      Group #HiddenContainer {
+        Anchor: (Width: 500, Top: 2);
+        FlexWeight: 1;
+        LayoutMode: TopScrolling;
+        Padding: (Left: 7);
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+
+        Group #HiddenCards {
+          LayoutMode: Top;
+        }
+      }
+
+      Group { Anchor: (Height: 1, Top: 8); Background: #282b2a; }
+
+      // === Muted Players Section ===
+      Label {
+        Anchor: (Top: 8, Left: 14);
+        Style: (FontSize: 16, RenderBold: true, TextColor: #93844c);
+        Text: "Muted Players";
+      }
+
+      Group #MuteRow {
+        LayoutMode: Left;
+        Padding: (Top: 4, Bottom: 4, Left: 14, Right: 14);
+        $C.@TextField #MuteInput {
+          FlexWeight: 1;
+          Anchor: (Height: 28);
+          Style: (FontSize: 14, TextColor: #ffffff(0.85));
+        }
+        Label { Anchor: (Width: 6); }
+        $C.@DropdownBox #DurationDropdown {
+          Anchor: (Width: 110, Height: 20);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #MuteButton {
+          Anchor: (Width: 52, Height: 28);
+          Text: "Mute";
+          Style: @BtnStyle;
+        }
+      }
+
+      Group #MutedContainer {
+        Anchor: (Width: 500, Top: 2);
+        FlexWeight: 1;
+        LayoutMode: TopScrolling;
+        Padding: (Left: 7);
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+
+        Group #MutedCards {
+          LayoutMode: Top;
+        }
+      }
+    }
+  }
+}

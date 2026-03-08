@@ -1,0 +1,128 @@
+$C = "Common.ui";
+
+@BtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 13, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+  Hovered: (LabelStyle: (FontSize: 13, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+  Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@DimBtn = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #808890, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1e2d3d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #253545)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #18242f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+$C.@PageOverlay {
+  $C.@DecoratedContainer {
+    Anchor: (Width: 520, Height: 660);
+
+    #Title {
+      Group {
+        TextButton #BackButton {
+          Anchor: (Left: 12, Top: 4, Width: 64, Height: 24);
+          Text: "< Back";
+          Style: @BtnStyle;
+        }
+
+        Label #TitleLabel {
+          Anchor: (Height: 28, Horizontal: 0);
+          Style: (FontSize: 20, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center);
+          Text: "PLAYER COLORS";
+        }
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+
+      // Color picker for choosing colors
+      ColorPicker #ColorPicker {
+        Anchor: (Width: 280, Height: 160, Top: 8);
+        Format: Rgb;
+        Style: $C.@DefaultColorPickerStyle;
+      }
+
+      // Hex display
+      Group {
+        LayoutMode: Left;
+        Anchor: (Width: 280, Top: 4, Height: 24);
+        Label { Text: "Hex"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, VerticalAlignment: Center); Anchor: (Width: 28); }
+        Label { Anchor: (Width: 4); }
+        TextField #HexField { Anchor: (Width: 90, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #93844c); Padding: (Left: 10); }
+      }
+
+      Group { Anchor: (Height: 1, Top: 8); Background: #282b2a; }
+
+      // All Players Override
+      Group #GlobalRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "All Players"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Override all players to this color"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group #GlobalSwatch {
+          Anchor: (Width: 40, Height: 26);
+          Background: #33333380;
+        }
+        Label #GlobalNone {
+          Anchor: (Width: 40, Height: 26);
+          Style: (FontSize: 12, TextColor: #808890, HorizontalAlignment: Center, VerticalAlignment: Center);
+          Text: "None";
+          Visible: false;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #SetGlobalBtn {
+          Anchor: (Width: 44, Height: 26);
+          Text: "Set";
+          Style: @DimBtn;
+        }
+        Label { Anchor: (Width: 4); }
+        TextButton #ClearGlobalBtn {
+          Anchor: (Width: 52, Height: 26);
+          Text: "Clear";
+          Style: @DimBtn;
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Per Player section
+      Label {
+        Anchor: (Top: 8, Left: 14);
+        Style: (FontSize: 16, RenderBold: true, TextColor: #93844c);
+        Text: "Per Player";
+      }
+
+      // Add row
+      Group #AddRow {
+        LayoutMode: Left;
+        Padding: (Top: 4, Bottom: 4, Left: 14, Right: 14);
+        $C.@TextField #NameInput {
+          FlexWeight: 1;
+          Anchor: (Height: 28);
+          Style: (FontSize: 14, TextColor: #ffffff(0.85));
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #AddButton {
+          Anchor: (Width: 44, Height: 28);
+          Text: "Add";
+          Style: @BtnStyle;
+        }
+      }
+
+      // Scrollable list
+      Group #ListContainer {
+        Anchor: (Width: 500, Top: 4);
+        FlexWeight: 1;
+        LayoutMode: TopScrolling;
+        Padding: (Left: 7);
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+
+        Group #ListCards {
+          LayoutMode: Top;
+        }
+      }
+    }
+  }
+}

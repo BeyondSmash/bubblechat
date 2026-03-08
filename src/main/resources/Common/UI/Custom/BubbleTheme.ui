@@ -1,0 +1,336 @@
+$C = "Common.ui";
+
+@ActiveOnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #2d5a2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #3a6a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1f4a1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@ActiveOffStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #5a2d2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #6a3a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #4a1f1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@DimStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #808890, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1e2d3d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #253545)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #18242f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@NavBtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 13, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+  Hovered: (LabelStyle: (FontSize: 13, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+  Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+  Sounds: $C.@ButtonSounds,
+);
+
+$C.@PageOverlay {
+  $C.@DecoratedContainer {
+    Anchor: (Width: 520, Height: 725);
+
+    #Title {
+      Group {
+        TextButton #BackButton {
+          Anchor: (Left: 12, Top: 4, Width: 44, Height: 24);
+          Text: "Exit";
+          Style: TextButtonStyle(
+            Default: (LabelStyle: (FontSize: 14, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+            Hovered: (LabelStyle: (FontSize: 14, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+            Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+            Sounds: $C.@ButtonSounds,
+          );
+        }
+
+        TextButton #UndoButton {
+          Anchor: (Left: 60, Top: 4, Width: 46, Height: 24);
+          Text: "Undo";
+          Style: @NavBtnStyle;
+          Visible: false;
+        }
+
+        TextButton #RedoButton {
+          Anchor: (Left: 110, Top: 4, Width: 46, Height: 24);
+          Text: "Redo";
+          Style: @NavBtnStyle;
+          Visible: false;
+        }
+
+        Label #TitleLabel {
+          Anchor: (Height: 28, Horizontal: 0);
+          Style: (FontSize: 20, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center);
+          Text: "BUBBLE SETTINGS";
+        }
+
+        TextButton #ResetButton {
+          Anchor: (Width: 72, Height: 24, Top: 4, Right: 13);
+          Text: "Reset All";
+          Style: TextButtonStyle(
+            Default: (LabelStyle: (FontSize: 13, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+            Hovered: (LabelStyle: (FontSize: 13, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+            Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+            Sounds: $C.@ButtonSounds,
+          );
+        }
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+
+      // === Mode (Light/Dark) ===
+      Group #ModeRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Mode"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Light or dark bubble background"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 60, Height: 26);
+          TextButton #LightOnA { Anchor: (Width: 60, Height: 26); Text: "LIGHT"; Style: @ActiveOnStyle; }
+          TextButton #LightOnD { Anchor: (Width: 60, Height: 26); Text: "LIGHT"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 60, Height: 26);
+          TextButton #DarkOnA { Anchor: (Width: 60, Height: 26); Text: "DARK"; Style: @ActiveOnStyle; }
+          TextButton #DarkOnD { Anchor: (Width: 60, Height: 26); Text: "DARK"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Self Visible ===
+      Group #SelfRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Self Visible"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Show your own chat bubbles"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #SelfOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+          TextButton #SelfOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #SelfOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+          TextButton #SelfOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Bubble Color ===
+      Group #ColorSection {
+        LayoutMode: Top;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+
+        Group {
+          LayoutMode: Left;
+          Label { Text: "Bubble Color"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Tint color for your bubble"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+          Label { FlexWeight: 1; }
+          Group #PreviewSwatch {
+            Anchor: (Width: 40, Height: 26);
+            Background: #33333380;
+          }
+          Label { Anchor: (Width: 6); }
+          TextButton #DefaultColorBtn {
+            Anchor: (Width: 60, Height: 26);
+            Text: "Default";
+            Style: @DimStyle;
+          }
+        }
+
+        // Preview + ColorPicker side by side
+        Group {
+          LayoutMode: Left;
+          Anchor: (Top: 8, Height: 220);
+
+          // Preview column (vertically centered)
+          Group {
+            Anchor: (Width: 128, Height: 220);
+            LayoutMode: Middle;
+
+            Group {
+              LayoutMode: Top;
+              Anchor: (Width: 128, Height: 150);
+
+              Label {
+                Anchor: (Height: 16);
+                Text: "Preview:";
+                Style: (FontSize: 14, RenderBold: true, TextColor: #808890, HorizontalAlignment: Center);
+              }
+
+              Group {
+                Anchor: (Width: 128, Height: 128, Top: 4);
+                Group #BubblePreviewDark {
+                  Anchor: (Width: 128, Height: 128);
+                  Background: (TexturePath: "BC_Bubble_1.png", Color: #FFFFFFFF);
+                }
+                Group #BubblePreviewLight {
+                  Anchor: (Width: 128, Height: 128);
+                  Visible: false;
+                  Background: (TexturePath: "BC_Bubble_Light_1.png", Color: #FFFFFFFF);
+                }
+                Label #PreviewText {
+                  Anchor: (Width: 128, Height: 90, Top: 5);
+                  Text: "test";
+                  Style: (FontSize: 18, RenderBold: true, TextColor: #FFFFFF, HorizontalAlignment: Center, VerticalAlignment: Center);
+                }
+              }
+            }
+          }
+
+          Label { FlexWeight: 1; }
+
+          ColorPicker #ColorPicker {
+            Anchor: (Width: 310, Height: 220);
+            Format: Rgb;
+            Style: $C.@DefaultColorPickerStyle;
+          }
+        }
+
+        // HSV row
+        Group {
+          LayoutMode: Left;
+          Anchor: (Width: 310, Top: 6, Height: 24, Right: 0);
+          Label { Text: "Hue"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, VerticalAlignment: Center); Anchor: (Width: 28); }
+          Label { Anchor: (Width: 4); }
+          TextField #HueField { Anchor: (Width: 50, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #c0cdd8); Padding: (Left: 10); }
+          Label { Anchor: (Width: 10); }
+          Label { Text: "Sat"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, VerticalAlignment: Center); Anchor: (Width: 24); }
+          Label { Anchor: (Width: 4); }
+          TextField #SatField { Anchor: (Width: 50, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #c0cdd8); Padding: (Left: 10); }
+          Label { Anchor: (Width: 10); }
+          Label { Text: "Val"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, VerticalAlignment: Center); Anchor: (Width: 24); }
+          Label { Anchor: (Width: 4); }
+          TextField #ValField { Anchor: (Width: 50, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #c0cdd8); Padding: (Left: 10); }
+        }
+
+        // RGB row
+        Group {
+          LayoutMode: Left;
+          Anchor: (Width: 310, Top: 4, Height: 24, Right: 0);
+          Label { Text: "R"; Style: (FontSize: 13, RenderBold: true, TextColor: #cc4444, VerticalAlignment: Center); Anchor: (Width: 14); }
+          Label { Anchor: (Width: 4); }
+          TextField #RedField { Anchor: (Width: 50, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #c0cdd8); Padding: (Left: 10); }
+          Label { Anchor: (Width: 10); }
+          Label { Text: "G"; Style: (FontSize: 13, RenderBold: true, TextColor: #44cc44, VerticalAlignment: Center); Anchor: (Width: 14); }
+          Label { Anchor: (Width: 4); }
+          TextField #GreenField { Anchor: (Width: 50, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #c0cdd8); Padding: (Left: 10); }
+          Label { Anchor: (Width: 10); }
+          Label { Text: "B"; Style: (FontSize: 13, RenderBold: true, TextColor: #4488cc, VerticalAlignment: Center); Anchor: (Width: 14); }
+          Label { Anchor: (Width: 4); }
+          TextField #BlueField { Anchor: (Width: 50, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #c0cdd8); Padding: (Left: 10); }
+        }
+
+        // Hex row
+        Group {
+          LayoutMode: Left;
+          Anchor: (Width: 310, Top: 4, Height: 24, Right: 0);
+          Label { Text: "Hex"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, VerticalAlignment: Center); Anchor: (Width: 28); }
+          Label { Anchor: (Width: 4); }
+          TextField #HexField { Anchor: (Width: 90, Height: 22); Background: #1a2533; Style: (FontSize: 13, TextColor: #93844c); Padding: (Left: 10); }
+          Label { Anchor: (Width: 12); }
+          Label #ContrastLabel { Style: (FontSize: 13, RenderBold: true, TextColor: #44cc44, VerticalAlignment: Center); Text: ""; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Cull Distance ===
+      Group #CullDistRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Cull Distance"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Max block distance to see bubbles"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #CullDistDropdown {
+          Anchor: (Width: 80, Height: 20);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefaultCullBtn {
+          Anchor: (Width: 60, Height: 26);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Max Bubbles ===
+      Group #MaxBubbleRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Max Bubbles"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Max bubbles shown at once"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #MaxBubbleDropdown {
+          Anchor: (Width: 70, Height: 20);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefaultMaxBtn {
+          Anchor: (Width: 60, Height: 26);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Visemes (Mouth Animations) ===
+      Group #VisemesRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Expressions"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Mouth animations during chat"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #VisOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+          TextButton #VisOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #VisOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+          TextButton #VisOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Yell Particle ===
+      Group #YellRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Yell Effect"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Particle effect on ALL CAPS or ! words"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #YellOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+          TextButton #YellOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #YellOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+          TextButton #YellOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Navigation Row ===
+      Group #NavRow {
+        LayoutMode: Left;
+        Padding: (Top: 10, Bottom: 8, Left: 14, Right: 14);
+        Label { FlexWeight: 1; }
+        TextButton #NavPlayerColors {
+          Anchor: (Width: 150, Height: 28);
+          Text: "Player Colors";
+          Style: @NavBtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #NavHiddenMuted {
+          Anchor: (Width: 150, Height: 28);
+          Text: "Hidden / Muted";
+          Style: @NavBtnStyle;
+        }
+        Label { FlexWeight: 1; }
+      }
+    }
+  }
+}

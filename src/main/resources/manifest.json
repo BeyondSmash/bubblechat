@@ -1,0 +1,12 @@
+{
+  "Group": "BeyondSmash",
+  "Name": "BubbleChat",
+  "Version": "1.0.1",
+  "Description": "Displays animated speech bubbles above players when they chat",
+  "Authors": [
+    { "Name": "BeyondSmash" }
+  ],
+  "ServerVersion": "${hytaleServerVersion}",
+  "Main": "com.bubblechat.BCPlugin",
+  "IncludesAssetPack": true
+}

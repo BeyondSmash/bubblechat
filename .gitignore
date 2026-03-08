@@ -1,0 +1,28 @@
+# Build
+build/
+bin/
+.gradle/
+out/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+*.settings/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Artifacts
+*.zip
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Tools (local dev utilities)
+tools/
+
+# Internal docs
+docs/
