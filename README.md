@@ -23,7 +23,7 @@ Smooth, animated speech bubbles above players when they chat. Word-by-word revea
 
 Custom phoneme-based lip-sync animations play on the player model while the bubble is active. Each word triggers a mouth shape based on its starting letter, mapped to 16 distinct mouth positions:
 
-![Viseme Mapping Table](https://i.imgur.com/BQ9ko02.png)
+![Viseme Mapping Table](https://i.imgur.com/eTEPvEk.png)
 
 ![Mouth Sprite Sheet](https://i.imgur.com/6jfOvC8.png)
 
