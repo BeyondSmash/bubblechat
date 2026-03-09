@@ -6,7 +6,7 @@ plugins {
 apply(from = "../gradle/hytale-version.gradle.kts")
 
 group = "com.bubblechat"
-version = "1.0.1"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
@@ -40,7 +40,7 @@ tasks.processResources {
 tasks.shadowJar {
     archiveBaseName.set("BubbleChat")
     archiveClassifier.set("")
-    archiveVersion.set("1.0.1")
+    archiveVersion.set("1.0.2")
     from("assets") {
         into("")
         exclude("manifest.json")

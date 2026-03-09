@@ -24,7 +24,7 @@ public class BCPlugin extends JavaPlugin {
 
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
     private static final String PLUGIN_NAME = "BubbleChat";
-    private static final String VERSION = "1.0.1";
+    private static final String VERSION = "1.0.2";
     private static final long POLL_INTERVAL_MS = 20;
 
     private SpeechManager speechManager;
@@ -59,6 +59,14 @@ public class BCPlugin extends JavaPlugin {
         // Init composite renderer + build runtime-cloned particle packets
         speechManager.initResources();
 
+        // Start scheduler (must be before event registration to avoid race condition)
+        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "BC-Scheduler");
+            thread.setDaemon(true);
+            return thread;
+        });
+        speechManager.setScheduler(scheduler);
+
         // Register command
         getCommandRegistry().registerCommand(new BCCommand(speechManager, themeStorage, prefsStorage));
         LOGGER.atInfo().log("Registered /bchat command");
@@ -74,9 +82,14 @@ public class BCPlugin extends JavaPlugin {
 
             // Delay slightly so client is ready to receive packets
             scheduler.schedule(() -> {
-                speechManager.sendParticleConfigs(playerRef);
-                // Apply saved theme (color/light mode) on top of default spawners
-                speechManager.applyThemeToPlayer(playerUuid, playerRef);
+                try {
+                    speechManager.sendParticleConfigs(playerRef);
+                    // Apply saved theme (color/light mode) on top of default spawners
+                    speechManager.applyThemeToPlayer(playerUuid, playerRef);
+                } catch (Exception e) {
+                    LOGGER.atWarning().log("Error sending particle configs to %s: %s",
+                        playerRef.getUsername(), e.getMessage());
+                }
             }, 2, TimeUnit.SECONDS);
         });
 
@@ -100,14 +113,6 @@ public class BCPlugin extends JavaPlugin {
         getEventRegistry().register(PlayerDisconnectEvent.class, event -> {
             speechManager.removePlayer(event.getPlayerRef().getUuid());
         });
-
-        // Start scheduler
-        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread thread = new Thread(r, "BC-Scheduler");
-            thread.setDaemon(true);
-            return thread;
-        });
-        speechManager.setScheduler(scheduler);
 
         // Clear active bubble chat when ThinkingBubble / busy-bubble triggers (UI opens)
         PacketAdapters.registerOutbound((PlayerPacketWatcher) (playerRef, packet) -> {
