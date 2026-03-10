@@ -92,6 +92,22 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
                     }
                     return;
                 }
+                case "GoPlayerColors" -> {
+                    Player player2 = store.getComponent(ref, Player.getComponentType());
+                    if (player2 != null) {
+                        player2.getPageManager().openCustomPage(ref, store,
+                            new PlayerColorsPage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
+                    return;
+                }
+                case "GoChannels" -> {
+                    Player player3 = store.getComponent(ref, Player.getComponentType());
+                    if (player3 != null) {
+                        player3.getPageManager().openCustomPage(ref, store,
+                            new ChannelsPage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
+                    return;
+                }
                 case "Hide" -> {
                     if (hideInput != null && !hideInput.trim().isEmpty()) {
                         String name = hideInput.trim().toLowerCase();
@@ -145,6 +161,12 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
         // Back button
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#BackButton",
             new EventData().append("Action", "Back"), false);
+
+        // Nav buttons
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavPlayerColors",
+            new EventData().append("Action", "GoPlayerColors"), false);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavChannels",
+            new EventData().append("Action", "GoChannels"), false);
 
         // Sync input fields with server state (clears after Hide/Mute)
         cmd.set("#HideInput.Value", hideInput);

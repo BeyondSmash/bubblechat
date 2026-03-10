@@ -4,7 +4,7 @@
 
 # BubbleChat
 
-Smooth, animated speech bubbles above players when they chat. Word-by-word reveal, auto-sizing, multi-line wrapping, page indicators, mouth animations, custom colors, and a full per-player settings GUI.
+Smooth, animated speech bubbles above players when they chat. Word-by-word reveal, auto-sizing, multi-line wrapping, page indicators, mouth animations, custom colors, private RP channels, and a full per-player settings GUI.
 
 ***
 
@@ -48,8 +48,22 @@ Control what colors you see on other players' bubbles, independent of their own 
 *   **Per-player overrides** — set specific colors for individual players
 *   **Priority order**: All Players override > Per-player override > Speaker's own color
 
+### RP Channels
+
+Private roleplay channels for in-character chat that only channel members can see:
+
+*   **PIN-based channels** — create or join channels with a shared PIN code
+*   **3 channel slots** — save up to 3 channels and switch between them
+*   **Chat prefixes** — type `rp1`, `rp2`, or `rp3` before your message to send to that channel, or `pbc` to force public
+*   **Dual visibility** — optionally show your bubble to everyone (public + channel) while sending \[RP\] text to channel members
+*   **Switch confirmation** — optional confirmation prompt before switching channels via prefix
+*   **Per-channel bubble colors** — distinct tint colors for each channel slot, customizable per viewer
+*   **RP cull distance** — separate cull distance for channel bubbles (default 10M)
+*   **Yell ranges** — separate range settings for yell bubble visibility (default 50M) and yell particle visibility (default 75M)
+
 ### Visibility Control
 
+*   **Enable/Disable toggle** — turn speech bubbles on or off entirely
 *   **Self-visible toggle** — show or hide your own speech bubble
 *   **Hide players** — permanently hide bubbles from specific players
 *   **Mute players** — temporarily mute with preset durations (5 min to 24 hours, auto-expires)
@@ -60,17 +74,18 @@ Control what colors you see on other players' bubbles, independent of their own 
 
 ## Settings GUI
 
-Open with `/bchat theme` for the full settings page:
+Open with `/bchat` or `/bchat theme` for the full settings page:
 
+*   **Enable** — On/Off toggle for speech bubbles
 *   **Mode** — Light/Dark toggle
 *   **Self Visible** — On/Off toggle
 *   **Bubble Color** — Color picker with live preview swatch, HSV/RGB/Hex readouts, and Default button
 *   **Cull Distance** — Dropdown (10-200M)
 *   **Max Bubbles** — Dropdown (1-50)
 *   **Expressions** — On/Off toggle for mouth animations
-*   **Yell Effect** — On/Off toggle
 *   **Player Colors** — Sub-page for global and per-player color overrides
-*   **Hidden / Muted** — Sub-page for managing hidden and muted players
+*   **Channels** — Sub-page for RP channel management, dual visibility, cull distances, and yell ranges
+*   **Hidden & Muted** — Sub-page for managing hidden and muted players
 *   **Reset All** — Restore all settings to defaults
 *   **Undo / Redo** — Full action history (up to 50 steps)
 
@@ -78,29 +93,65 @@ Open with `/bchat theme` for the full settings page:
 
 ## Commands
 
-| Command                                                  |Description                        |
-| -------------------------------------------------------- |---------------------------------- |
-| <code>/bchat</code>                                      |Toggle speech bubbles on/off       |
-| <code>/bchat self on|off</code>                          |Show/hide your own bubble          |
-| <code>/bchat clear</code>                                |Dismiss your current speech bubble |
-| <code>/bchat theme</code>                                |Open the settings GUI              |
-| <code>/bchat theme light|dark</code>                     |Set bubble mode via command        |
-| <code>/bchat theme color &amp;amp;amp;lt;#RRGGBB|reset&amp;amp;amp;gt;</code> |Set bubble tint color via command  |
-| <code>/bchat status</code>                               |Show current settings              |
-| <code>/bchat help</code>                                 |Show command list                  |
+| Command                                             | Description                         |
+| --------------------------------------------------- | ----------------------------------- |
+| <code>/bchat</code>                                 | Open the settings GUI               |
+| <code>/bchat toggle</code>                          | Toggle speech bubbles on/off        |
+| <code>/bchat self on\|off</code>                    | Show/hide your own bubble           |
+| <code>/bchat clear</code>                           | Dismiss your current speech bubble  |
+| <code>/bchat theme</code>                           | Open the settings GUI               |
+| <code>/bchat theme light\|dark</code>               | Set bubble mode via command         |
+| <code>/bchat theme color #RRGGBB\|reset</code>     | Set bubble tint color via command   |
+| <code>/bchat pc</code>                              | Open Player Colors page             |
+| <code>/bchat ch</code>                              | Open Channels page                  |
+| <code>/bchat hm</code>                              | Open Hidden & Muted page            |
+| <code>/bchat status</code>                          | Show current settings               |
+| <code>/bchat help</code>                            | Show command list                   |
+
+### Chat Prefixes
+
+| Prefix                    | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| <code>rp1 message</code> | Send to channel in slot 1               |
+| <code>rp2 message</code> | Send to channel in slot 2               |
+| <code>rp3 message</code> | Send to channel in slot 3               |
+| <code>pbc message</code> | Force public chat (bypass active channel) |
 
 ***
 
 ## Compatibility
 
-*   **BusyBubble** — Speech bubbles automatically clear when a thinking/busy UI opens, preventing visual overlap.
+*   **BusyBubble** — Full bidirectional priority: speech bubbles clear any active thinking bubble on send, and thinking bubbles won't spawn while a speech bubble is active. When a UI opens, any active speech bubble is also cleared.
 
 ***
 
 ## Installation
 
-1.  Drop `BubbleChat-1.0.1.jar` into your `Mods` folder
+1.  Drop `BubbleChat-1.1.0.jar` into your `Mods` folder
 2.  No configuration needed — all settings are per-player via the in-game GUI
+
+***
+
+## Known Issues
+
+### `[AssetUpdate]` messages on connect
+
+When joining a server with BubbleChat, you may see 2 `[AssetUpdate]` log messages in chat:
+
+```text
+[AssetUpdate] ParticleSpawners: Starting AddOrUpdate
+[AssetUpdate] ParticleSystems: Starting AddOrUpdate
+```
+
+**This is a Hytale client behavior, not a bug.** The client logs these messages whenever a plugin sends custom particle definitions after the initial load phase. BubbleChat needs to send its custom bubble particle configs to your client so the speech bubbles can render — there is no way to suppress these messages from the server side.
+
+We've already minimized this from 11 messages down to 2 by batching all particle configs into a single packet. The remaining 2 messages are the minimum achievable without Hytale client changes. This will likely be resolved in a future Hytale update as the game matures past Early Access.
+
+### Font customization
+
+BubbleChat's text is rendered using the vanilla Nameplate element (the same system that displays player usernames above their heads). This means the font, text color, and text styling are controlled entirely by Hytale's built-in nameplate renderer — there is currently no server-side API to change these properties.
+
+My hope is that Hypixel adds more support for Nameplate customization (text color, font changes, styling, etc.) in a future update. Once that API exists, I'll update BubbleChat to support those features. Additionally, the text currently uses a virtual entity positioned by the server, whereas the bubble background uses entity-attached particles that track the player at client frame rate. Ideally the text could also be entity-attached for the smoothest possible tracking, but that isn't available for nameplates yet.
 
 ***
 
@@ -144,3 +195,5 @@ Bubbles triggered via the API use the speaker's own theme settings (color, light
 *   **sai3rina** — Testing & feedback
 *   **zenkuro** — Testing & feedback
 *   **Matt\_97** — Testing & feedback
+*   **WalnutOwl** — Testing & feedback
+*   **Joey475574** — Testing & feedback

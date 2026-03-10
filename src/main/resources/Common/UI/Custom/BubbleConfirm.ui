@@ -1,0 +1,57 @@
+$C = "Common.ui";
+
+@ConfirmBtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #2d5a2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #3a6a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1f4a1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@CancelBtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #5a2d2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #6a3a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #4a1f1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+$C.@PageOverlay {
+  $C.@DecoratedContainer {
+    Anchor: (Width: 340, Height: 130);
+
+    #Title {
+      Label #TitleLabel {
+        Anchor: (Height: 28, Horizontal: 0);
+        Style: (FontSize: 16, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center);
+        Text: "CONFIRM";
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+
+      Label #ConfirmMsg {
+        Padding: (Top: 10, Bottom: 4, Left: 14, Right: 14);
+        Style: (FontSize: 14, TextColor: #c0cdd8, HorizontalAlignment: Center, VerticalAlignment: Center);
+        Text: "Switch channel?";
+      }
+
+      Group {
+        LayoutMode: Left;
+        Padding: (Top: 12, Left: 14, Right: 14);
+        Label { FlexWeight: 1; }
+        TextButton #SendBtn {
+          Anchor: (Width: 100, Height: 30);
+          Text: "Send";
+          Style: @ConfirmBtnStyle;
+        }
+        Label { Anchor: (Width: 12); }
+        TextButton #CancelBtn {
+          Anchor: (Width: 100, Height: 30);
+          Text: "Cancel";
+          Style: @CancelBtnStyle;
+        }
+        Label { FlexWeight: 1; }
+      }
+    }
+  }
+}

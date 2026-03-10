@@ -88,7 +88,6 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
                     prefs.cullDistance = 20;
                     prefs.maxBubbleCount = 10;
                     prefs.visemesEnabled = true;
-                    prefs.yellEnabled = true;
                     themeStorage.saveAsync(manager.getScheduler());
                     prefsStorage.saveAsync(playerUuid, manager.getScheduler());
                     manager.applyThemeToPlayer(playerUuid, playerRef);
@@ -138,15 +137,11 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
                     prefs.visemesEnabled = false;
                     prefsStorage.saveAsync(playerUuid, manager.getScheduler());
                 }
-                case "YellOn" -> {
-                    pushUndo();
-                    prefs.yellEnabled = true;
-                    prefsStorage.saveAsync(playerUuid, manager.getScheduler());
+                case "EnableOn" -> {
+                    manager.enablePlayer(playerUuid);
                 }
-                case "YellOff" -> {
-                    pushUndo();
-                    prefs.yellEnabled = false;
-                    prefsStorage.saveAsync(playerUuid, manager.getScheduler());
+                case "EnableOff" -> {
+                    manager.disablePlayer(playerUuid);
                 }
                 case "DefaultCull" -> {
                     pushUndo();
@@ -163,6 +158,14 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
                     if (player != null) {
                         PlayerColorsPage page = new PlayerColorsPage(manager, themeStorage, prefsStorage, playerRef, playerUuid);
                         player.getPageManager().openCustomPage(ref, store, page);
+                    }
+                    return;
+                }
+                case "GoChannels" -> {
+                    Player player3 = store.getComponent(ref, Player.getComponentType());
+                    if (player3 != null) {
+                        ChannelsPage page = new ChannelsPage(manager, themeStorage, prefsStorage, playerRef, playerUuid);
+                        player3.getPageManager().openCustomPage(ref, store, page);
                     }
                     return;
                 }
@@ -214,14 +217,14 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
 
     private record SettingsSnapshot(boolean lightMode, String tintColorHex,
                                      boolean selfVisible, int cullDistance, int maxBubbleCount,
-                                     boolean visemesEnabled, boolean yellEnabled) {}
+                                     boolean visemesEnabled) {}
 
     private SettingsSnapshot takeSnapshot() {
         PlayerBubbleTheme theme = themeStorage.getTheme(playerUuid);
         PlayerBubblePrefs prefs = prefsStorage.getPrefs(playerUuid);
         return new SettingsSnapshot(theme.lightMode, theme.tintColorHex,
                 theme.selfVisible, prefs.cullDistance, prefs.maxBubbleCount,
-                prefs.visemesEnabled, prefs.yellEnabled);
+                prefs.visemesEnabled);
     }
 
     private void restoreSnapshot(SettingsSnapshot s) {
@@ -234,7 +237,6 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
         prefs.cullDistance = s.cullDistance();
         prefs.maxBubbleCount = s.maxBubbleCount();
         prefs.visemesEnabled = s.visemesEnabled();
-        prefs.yellEnabled = s.yellEnabled();
         themeStorage.saveAsync(manager.getScheduler());
         prefsStorage.saveAsync(playerUuid, manager.getScheduler());
         manager.applyThemeToPlayer(playerUuid, playerRef);
@@ -286,10 +288,10 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
             EventData.of("DropdownId", "MaxBubble").append("@DropdownValue", "#MaxBubbleDropdown.Value"), false);
 
         // Toggle pairs (each has 4 bindings: active on/off, dim on/off)
+        registerToggleEvents(evt, "#EnableOnA", "#EnableOnD", "#EnableOffA", "#EnableOffD", "EnableOn", "EnableOff");
         registerToggleEvents(evt, "#LightOnA", "#LightOnD", "#DarkOnA", "#DarkOnD", "LightOn", "DarkOn");
         registerToggleEvents(evt, "#SelfOnA", "#SelfOnD", "#SelfOffA", "#SelfOffD", "SelfOn", "SelfOff");
         registerToggleEvents(evt, "#VisOnA", "#VisOnD", "#VisOffA", "#VisOffD", "VisOn", "VisOff");
-        registerToggleEvents(evt, "#YellOnA", "#YellOnD", "#YellOffA", "#YellOffD", "YellOn", "YellOff");
 
         // Default buttons
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#DefaultCullBtn",
@@ -300,6 +302,8 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
         // Nav buttons
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavPlayerColors",
             new EventData().append("Action", "GoPlayerColors"), false);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavChannels",
+            new EventData().append("Action", "GoChannels"), false);
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavHiddenMuted",
             new EventData().append("Action", "GoHiddenMuted"), false);
 
@@ -339,6 +343,9 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
     private void applyValues(@Nonnull UICommandBuilder cmd) {
         PlayerBubbleTheme theme = themeStorage.getTheme(playerUuid);
         PlayerBubblePrefs prefs = prefsStorage.getPrefs(playerUuid);
+
+        // Enable toggle visibility
+        setToggleVisibility(cmd, "#EnableOnA", "#EnableOnD", "#EnableOffA", "#EnableOffD", manager.isEnabled(playerUuid));
 
         // Mode toggle visibility
         setToggleVisibility(cmd, "#LightOnA", "#LightOnD", "#DarkOnA", "#DarkOnD", theme.lightMode);
@@ -418,9 +425,6 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
 
         // Visemes toggle visibility
         setToggleVisibility(cmd, "#VisOnA", "#VisOnD", "#VisOffA", "#VisOffD", prefs.visemesEnabled);
-
-        // Yell toggle visibility
-        setToggleVisibility(cmd, "#YellOnA", "#YellOnD", "#YellOffA", "#YellOffD", prefs.yellEnabled);
 
         // Undo + Redo
         cmd.set("#UndoButton.Visible", !undoStack.isEmpty());

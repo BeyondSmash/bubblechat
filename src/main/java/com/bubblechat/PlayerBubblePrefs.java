@@ -37,6 +37,36 @@ public class PlayerBubblePrefs {
     /** Whether mouth viseme animations play during chat. Default true. */
     public boolean visemesEnabled = true;
 
+    // --- Channel fields ---
+
+    /** RP channel PINs per slot (null = empty slot). Max 3 slots. */
+    public String[] channelSlots = new String[3];
+
+    /** Currently active channel slot index (0-2). -1 = no active channel (public). */
+    public int activeSlot = -1;
+
+    /** When true, also see public bubbles while in a private channel. Default false. */
+    public boolean dualVisibility = false;
+
+    /** When true, show confirmation UI before switching channels via prefix. Default true. */
+    public boolean switchConfirm = true;
+
+    /** Max distance (blocks) to see bubbles in RP channels. Default 10. */
+    public int rpCullDistance = 10;
+
+    /** Channel bubble tint colors (per-viewer). Keys: "public", "rp1", "rp2", "rp3". */
+    public Map<String, String> channelColors = new HashMap<>(Map.of(
+        "rp1", "#2d3d5a",
+        "rp2", "#3d2d5a",
+        "rp3", "#2d5a3d"
+    ));
+
+    /** Max distance for yell bubble visibility. Default 50. */
+    public int yellBubbleRange = 50;
+
+    /** Max distance for yell particle visibility. Default 75. */
+    public int yellParticleRange = 75;
+
     // --- Helpers ---
 
     public boolean isHidden(String lowerName) {
@@ -69,5 +99,35 @@ public class PlayerBubblePrefs {
 
     public int getEffectiveMaxBubbleCount() {
         return Math.max(1, Math.min(maxBubbleCount, 50));
+    }
+
+    public int getEffectiveRpCullDistance() {
+        return Math.max(1, Math.min(rpCullDistance, 200));
+    }
+
+    public int getEffectiveYellBubbleRange() {
+        return Math.max(1, Math.min(yellBubbleRange, 200));
+    }
+
+    public int getEffectiveYellParticleRange() {
+        return Math.max(1, Math.min(yellParticleRange, 200));
+    }
+
+    @Nullable
+    public String getActiveChannelPin() {
+        if (activeSlot < 0 || activeSlot >= channelSlots.length) return null;
+        return channelSlots[activeSlot];
+    }
+
+    public int findAvailableSlot() {
+        for (int i = 0; i < channelSlots.length; i++) {
+            if (channelSlots[i] == null) return i;
+        }
+        return -1;
+    }
+
+    @Nullable
+    public String getChannelColor(String channelKey) {
+        return channelColors.get(channelKey);
     }
 }

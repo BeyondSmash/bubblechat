@@ -105,6 +105,33 @@ $C.@PageOverlay {
           LayoutMode: Top;
         }
       }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Navigation Row ===
+      Group #NavRow {
+        LayoutMode: Left;
+        Padding: (Top: 10, Bottom: 8, Left: 14, Right: 14);
+        Label { FlexWeight: 1; }
+        TextButton #NavPlayerColors {
+          Anchor: (Width: 130, Height: 28);
+          Text: "Player Colors";
+          Style: @BtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #NavChannels {
+          Anchor: (Width: 100, Height: 28);
+          Text: "Channels";
+          Style: @BtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #NavHiddenMuted {
+          Anchor: (Width: 130, Height: 28);
+          Text: "Hidden & Muted";
+          Style: @BtnStyle;
+        }
+        Label { FlexWeight: 1; }
+      }
     }
   }
 }

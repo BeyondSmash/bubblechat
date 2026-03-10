@@ -19,14 +19,17 @@ public class BCCommand extends AbstractPlayerCommand {
     private final SpeechManager manager;
     private final BubbleThemeStorage themeStorage;
     private final PlayerBubblePrefsStorage prefsStorage;
+    private final ChannelStorage channelStorage;
 
-    public BCCommand(SpeechManager manager, BubbleThemeStorage themeStorage, PlayerBubblePrefsStorage prefsStorage) {
+    public BCCommand(SpeechManager manager, BubbleThemeStorage themeStorage,
+                     PlayerBubblePrefsStorage prefsStorage, ChannelStorage channelStorage) {
         super("bchat", "Toggle speech bubbles");
         setPermissionGroup(null);
         setAllowsExtraArguments(true);
         this.manager = manager;
         this.themeStorage = themeStorage;
         this.prefsStorage = prefsStorage;
+        this.channelStorage = channelStorage;
     }
 
     @Override
@@ -64,6 +67,20 @@ public class BCCommand extends AbstractPlayerCommand {
             return;
         }
 
+        // Direct page shortcuts
+        if (trimmed.equalsIgnoreCase("pc")) {
+            openPage(store, ref, playerRef, "pc");
+            return;
+        }
+        if (trimmed.equalsIgnoreCase("ch")) {
+            openPage(store, ref, playerRef, "ch");
+            return;
+        }
+        if (trimmed.equalsIgnoreCase("hm")) {
+            openPage(store, ref, playerRef, "hm");
+            return;
+        }
+
         if (trimmed.equalsIgnoreCase("status")) {
             boolean enabled = manager.isEnabled(uuid);
             boolean selfVisible = manager.isSelfVisible(uuid);
@@ -75,8 +92,13 @@ public class BCCommand extends AbstractPlayerCommand {
             return;
         }
 
-        // Default: toggle
-        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("toggle")) {
+        // Default: open settings GUI
+        if (trimmed.isEmpty()) {
+            openPage(store, ref, playerRef, "main");
+            return;
+        }
+
+        if (trimmed.equalsIgnoreCase("toggle")) {
             boolean nowEnabled = manager.togglePlayer(uuid);
             context.sendMessage(Message.raw(
                 "BubbleChat " + (nowEnabled ? "enabled" : "disabled") + " for you."
@@ -160,13 +182,34 @@ public class BCCommand extends AbstractPlayerCommand {
         }
     }
 
+    private void openPage(@Nonnull Store<EntityStore> store, @Nonnull Ref<EntityStore> ref,
+                          @Nonnull PlayerRef playerRef, @Nonnull String page) {
+        Player player = store.getComponent(ref, Player.getComponentType());
+        if (player == null) return;
+        UUID uuid = playerRef.getUuid();
+        switch (page) {
+            case "main" -> player.getPageManager().openCustomPage(ref, store,
+                new BubbleThemePage(manager, themeStorage, prefsStorage, playerRef, uuid));
+            case "pc" -> player.getPageManager().openCustomPage(ref, store,
+                new PlayerColorsPage(manager, themeStorage, prefsStorage, playerRef, uuid));
+            case "ch" -> player.getPageManager().openCustomPage(ref, store,
+                new ChannelsPage(manager, themeStorage, prefsStorage, playerRef, uuid));
+            case "hm" -> player.getPageManager().openCustomPage(ref, store,
+                new HiddenMutedPage(manager, themeStorage, prefsStorage, playerRef, uuid));
+        }
+    }
+
     private void sendHelp(@Nonnull CommandContext context) {
-        context.sendMessage(Message.raw("--- BubbleChat v1.0.0 Help ---"));
-        context.sendMessage(Message.raw("/bchat - Toggle speech bubbles on/off"));
-        context.sendMessage(Message.raw("/bchat self on|off - Show/hide your own bubble"));
-        context.sendMessage(Message.raw("/bchat clear - Dismiss your current speech bubble"));
-        context.sendMessage(Message.raw("/bchat theme - Show/set bubble theme (light/dark + color)"));
-        context.sendMessage(Message.raw("/bchat status - Show current settings"));
-        context.sendMessage(Message.raw("/bchat help - Show this help"));
+        context.sendMessage(Message.raw("--- BubbleChat Help ---"));
+        context.sendMessage(Message.raw("/bchat - Open bubble settings"));
+        context.sendMessage(Message.raw("/bchat pc - Player colors"));
+        context.sendMessage(Message.raw("/bchat ch - Channels"));
+        context.sendMessage(Message.raw("/bchat hm - Hidden & muted"));
+        context.sendMessage(Message.raw("/bchat toggle - Toggle on/off"));
+        context.sendMessage(Message.raw("/bchat self on|off - Show/hide own bubble"));
+        context.sendMessage(Message.raw("/bchat clear - Dismiss current bubble"));
+        context.sendMessage(Message.raw("/bchat theme light|dark - Set mode"));
+        context.sendMessage(Message.raw("/bchat theme color <#RRGGBB|reset> - Set tint"));
+        context.sendMessage(Message.raw("/bchat status - Show settings"));
     }
 }

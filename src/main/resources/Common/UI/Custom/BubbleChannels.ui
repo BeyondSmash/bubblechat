@@ -1,0 +1,371 @@
+$C = "Common.ui";
+
+@ActiveOnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #2d5a2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #3a6a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1f4a1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@ActiveOffStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #5a2d2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #6a3a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #4a1f1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@DimStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #808890, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1e2d3d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #253545)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #18242f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@NavBtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 13, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+  Hovered: (LabelStyle: (FontSize: 13, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+  Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+  Sounds: $C.@ButtonSounds,
+);
+
+$C.@PageOverlay {
+  $C.@DecoratedContainer {
+    Anchor: (Width: 520, Height: 725);
+
+    #Title {
+      Group {
+        TextButton #BackButton {
+          Anchor: (Left: 12, Top: 4, Width: 44, Height: 24);
+          Text: "Back";
+          Style: TextButtonStyle(
+            Default: (LabelStyle: (FontSize: 14, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+            Hovered: (LabelStyle: (FontSize: 14, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+            Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+            Sounds: $C.@ButtonSounds,
+          );
+        }
+
+        Label #TitleLabel {
+          Anchor: (Height: 28, Horizontal: 0);
+          Style: (FontSize: 20, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center);
+          Text: "CHANNELS";
+        }
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+
+      // ============================================================
+      // RP CHANNEL SECTION
+      // ============================================================
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+      Label { Text: "RP CHANNEL"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, HorizontalAlignment: Center); Padding: (Top: 8, Bottom: 4); }
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Channel Slot + Leave
+      Group #SlotRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 4, Left: 14, Right: 14);
+        Label { Text: "Channel"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #SlotDropdown {
+          Anchor: (Width: 180, Height: 20);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #LeaveBtn {
+          Anchor: (Width: 60, Height: 26);
+          Text: "Leave";
+          Style: @DimStyle;
+        }
+      }
+
+      // Status label
+      Group #StatusRow {
+        Padding: (Top: 2, Bottom: 6, Left: 14, Right: 14);
+        Label #StatusLabel {
+          Style: (FontSize: 14, TextColor: #808890);
+          Text: "Not in a channel";
+        }
+      }
+
+      // Host + Join row
+      Group #HostJoinRow {
+        LayoutMode: Left;
+        Padding: (Top: 4, Bottom: 8, Left: 14, Right: 14);
+        TextButton #HostBtn {
+          Anchor: (Width: 130, Height: 26);
+          Text: "Host New Channel";
+          Style: @DimStyle;
+        }
+        Label { Anchor: (Width: 8); }
+        Label #PinLabel {
+          Style: (FontSize: 14, RenderBold: true, TextColor: #c0cdd8, VerticalAlignment: Center);
+          Text: "PIN: ----";
+        }
+        Label { FlexWeight: 1; }
+        TextButton #JoinBtn {
+          Anchor: (Width: 50, Height: 26);
+          Text: "Join";
+          Style: @DimStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        Label { Text: "PIN:"; Style: (FontSize: 14, TextColor: #808890, VerticalAlignment: Center); }
+        Label { Anchor: (Width: 4); }
+        TextField #PinInput {
+          Anchor: (Width: 70, Height: 22);
+          Background: #1a2533;
+          Style: (FontSize: 14, TextColor: #c0cdd8);
+          Padding: (Left: 8);
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Dual Visibility toggle
+      Group #DualVisRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Dual Visibility"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Also see public bubbles while in RP channel"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #DualVisOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+          TextButton #DualVisOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #DualVisOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+          TextButton #DualVisOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Switch Confirm toggle
+      Group #SwitchConfRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Switch Confirm"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Show confirmation before switching channels via prefix"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #SwitchConfOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+          TextButton #SwitchConfOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #SwitchConfOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+          TextButton #SwitchConfOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // RP Cull Distance
+      Group #RpCullRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "RP Cull Distance"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Max block distance to see RP channel bubbles"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #RpCullDropdown {
+          Anchor: (Width: 80, Height: 20);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefaultRpCullBtn {
+          Anchor: (Width: 60, Height: 26);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      // ============================================================
+      // CHANNEL COLORS SECTION
+      // ============================================================
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+      Label { Text: "CHANNEL COLORS"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, HorizontalAlignment: Center); Padding: (Top: 8, Bottom: 4); }
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Public color
+      Group #PublicColorRow {
+        LayoutMode: Left;
+        Padding: (Top: 6, Bottom: 6, Left: 14, Right: 14);
+        Label { Text: "Public"; Style: (FontSize: 15, RenderBold: true, TextColor: #c0cdd8, VerticalAlignment: Center); Anchor: (Width: 70); }
+        Group #PublicSwatch {
+          Anchor: (Width: 30, Height: 22);
+          Background: #333333FF;
+        }
+        Label { FlexWeight: 1; }
+        TextButton #EditPublicBtn {
+          Anchor: (Width: 50, Height: 24);
+          Text: "Edit";
+          Style: @DimStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefPublicBtn {
+          Anchor: (Width: 60, Height: 24);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      // RP 1 color
+      Group #Rp1ColorRow {
+        LayoutMode: Left;
+        Padding: (Top: 6, Bottom: 6, Left: 14, Right: 14);
+        Label { Text: "RP 1"; Style: (FontSize: 15, RenderBold: true, TextColor: #c0cdd8, VerticalAlignment: Center); Anchor: (Width: 70); }
+        Group #Rp1Swatch {
+          Anchor: (Width: 30, Height: 22);
+          Background: #2d3d5aFF;
+        }
+        Label { FlexWeight: 1; }
+        TextButton #EditRp1Btn {
+          Anchor: (Width: 50, Height: 24);
+          Text: "Edit";
+          Style: @DimStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefRp1Btn {
+          Anchor: (Width: 60, Height: 24);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      // RP 2 color
+      Group #Rp2ColorRow {
+        LayoutMode: Left;
+        Padding: (Top: 6, Bottom: 6, Left: 14, Right: 14);
+        Label { Text: "RP 2"; Style: (FontSize: 15, RenderBold: true, TextColor: #c0cdd8, VerticalAlignment: Center); Anchor: (Width: 70); }
+        Group #Rp2Swatch {
+          Anchor: (Width: 30, Height: 22);
+          Background: #3d2d5aFF;
+        }
+        Label { FlexWeight: 1; }
+        TextButton #EditRp2Btn {
+          Anchor: (Width: 50, Height: 24);
+          Text: "Edit";
+          Style: @DimStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefRp2Btn {
+          Anchor: (Width: 60, Height: 24);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      // RP 3 color
+      Group #Rp3ColorRow {
+        LayoutMode: Left;
+        Padding: (Top: 6, Bottom: 6, Left: 14, Right: 14);
+        Label { Text: "RP 3"; Style: (FontSize: 15, RenderBold: true, TextColor: #c0cdd8, VerticalAlignment: Center); Anchor: (Width: 70); }
+        Group #Rp3Swatch {
+          Anchor: (Width: 30, Height: 22);
+          Background: #2d5a3dFF;
+        }
+        Label { FlexWeight: 1; }
+        TextButton #EditRp3Btn {
+          Anchor: (Width: 50, Height: 24);
+          Text: "Edit";
+          Style: @DimStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefRp3Btn {
+          Anchor: (Width: 60, Height: 24);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      // ============================================================
+      // YELL SECTION
+      // ============================================================
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+      Label { Text: "YELL"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, HorizontalAlignment: Center); Padding: (Top: 8, Bottom: 4); }
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Yell Effect toggle
+      Group #YellRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Yell Effect"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Enable yell particles on ALL CAPS messages"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #YellOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+          TextButton #YellOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #YellOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+          TextButton #YellOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Yell Bubble Range
+      Group #YellBubbleRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Yell Bubble Range"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Max distance to see yell bubbles"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #YellBubbleDropdown {
+          Anchor: (Width: 80, Height: 20);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefaultYellBubbleBtn {
+          Anchor: (Width: 60, Height: 26);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // Yell Particle Range
+      Group #YellParticleRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Yell Particle Range"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Max distance to see yell particles"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #YellParticleDropdown {
+          Anchor: (Width: 80, Height: 20);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #DefaultYellParticleBtn {
+          Anchor: (Width: 60, Height: 26);
+          Text: "Default";
+          Style: @DimStyle;
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // ============================================================
+      // NAVIGATION ROW
+      // ============================================================
+      Group #NavRow {
+        LayoutMode: Left;
+        Padding: (Top: 10, Bottom: 8, Left: 14, Right: 14);
+        Label { FlexWeight: 1; }
+        TextButton #NavPlayerColors {
+          Anchor: (Width: 130, Height: 28);
+          Text: "Player Colors";
+          Style: @NavBtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #NavChannels {
+          Anchor: (Width: 100, Height: 28);
+          Text: "Channels";
+          Style: @NavBtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #NavHiddenMuted {
+          Anchor: (Width: 130, Height: 28);
+          Text: "Hidden & Muted";
+          Style: @NavBtnStyle;
+        }
+        Label { FlexWeight: 1; }
+      }
+    }
+  }
+}

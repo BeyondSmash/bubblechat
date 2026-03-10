@@ -30,6 +30,11 @@ public class SpeechState {
     // Cached viewer list for scheduler-thread particle sends (avoids world.execute latency)
     private volatile java.util.List<com.hypixel.hytale.server.core.universe.PlayerRef> cachedViewers;
 
+    // Channel fields
+    private String channelPin; // null = public chat
+    private boolean yellMessage; // true if any word is a yell word
+    private boolean dualVisibilityBubble; // true = skip channel isolation (visible to all)
+
     // Multi-line support
     private int lineCount = 1;
     private int line2NetId = -1;
@@ -99,6 +104,13 @@ public class SpeechState {
 
     public java.util.List<com.hypixel.hytale.server.core.universe.PlayerRef> getCachedViewers() { return cachedViewers; }
     public void setCachedViewers(java.util.List<com.hypixel.hytale.server.core.universe.PlayerRef> viewers) { this.cachedViewers = viewers; }
+
+    public String getChannelPin() { return channelPin; }
+    public void setChannelPin(String pin) { this.channelPin = pin; }
+    public boolean isDualVisibilityBubble() { return dualVisibilityBubble; }
+    public void setDualVisibilityBubble(boolean v) { this.dualVisibilityBubble = v; }
+    public boolean isYellMessage() { return yellMessage; }
+    public void setYellMessage(boolean yell) { this.yellMessage = yell; }
 
     public String buildLine1Text() {
         int end = Math.min(currentWordIndex, line1EndWordIndex);

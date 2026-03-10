@@ -81,6 +81,25 @@ $C.@PageOverlay {
     #Content {
       LayoutMode: Top;
 
+      // === On/Off Toggle ===
+      Group #EnableRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "BubbleChat"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Enable or disable speech bubbles"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #EnableOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+          TextButton #EnableOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #EnableOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+          TextButton #EnableOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
       // === Mode (Light/Dark) ===
       Group #ModeRow {
         LayoutMode: Left;
@@ -294,39 +313,26 @@ $C.@PageOverlay {
 
       Group { Anchor: (Height: 1); Background: #282b2a; }
 
-      // === Yell Particle ===
-      Group #YellRow {
-        LayoutMode: Left;
-        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
-        Label { Text: "Yell Effect"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Particle effect on ALL CAPS or ! words"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
-        Label { FlexWeight: 1; }
-        Group { Anchor: (Width: 50, Height: 26);
-          TextButton #YellOnA { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
-          TextButton #YellOnD { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @DimStyle; }
-        }
-        Label { Anchor: (Width: 4); }
-        Group { Anchor: (Width: 50, Height: 26);
-          TextButton #YellOffA { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
-          TextButton #YellOffD { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @DimStyle; }
-        }
-      }
-
-      Group { Anchor: (Height: 1); Background: #282b2a; }
-
       // === Navigation Row ===
       Group #NavRow {
         LayoutMode: Left;
         Padding: (Top: 10, Bottom: 8, Left: 14, Right: 14);
         Label { FlexWeight: 1; }
         TextButton #NavPlayerColors {
-          Anchor: (Width: 150, Height: 28);
+          Anchor: (Width: 130, Height: 28);
           Text: "Player Colors";
           Style: @NavBtnStyle;
         }
         Label { Anchor: (Width: 6); }
+        TextButton #NavChannels {
+          Anchor: (Width: 100, Height: 28);
+          Text: "Channels";
+          Style: @NavBtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
         TextButton #NavHiddenMuted {
-          Anchor: (Width: 150, Height: 28);
-          Text: "Hidden / Muted";
+          Anchor: (Width: 130, Height: 28);
+          Text: "Hidden & Muted";
           Style: @NavBtnStyle;
         }
         Label { FlexWeight: 1; }

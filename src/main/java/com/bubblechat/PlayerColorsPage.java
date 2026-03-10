@@ -80,10 +80,26 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
                     }
                     return;
                 }
+                case "GoChannels" -> {
+                    Player player2 = store.getComponent(ref, Player.getComponentType());
+                    if (player2 != null) {
+                        player2.getPageManager().openCustomPage(ref, store,
+                            new ChannelsPage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
+                    return;
+                }
+                case "GoHiddenMuted" -> {
+                    Player player3 = store.getComponent(ref, Player.getComponentType());
+                    if (player3 != null) {
+                        player3.getPageManager().openCustomPage(ref, store,
+                            new HiddenMutedPage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
+                    return;
+                }
                 case "SetGlobal" -> {
                     prefs.globalColorOverride = currentPickerHex;
                     prefsStorage.saveAsync(playerUuid, manager.getScheduler());
-                    manager.registerOverrideColor(currentPickerHex);
+                    manager.registerOverrideColor(currentPickerHex, true);
                 }
                 case "ClearGlobal" -> {
                     prefs.globalColorOverride = null;
@@ -94,7 +110,7 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
                         String name = inputField.trim().toLowerCase();
                         prefs.playerColors.put(name, currentPickerHex);
                         prefsStorage.saveAsync(playerUuid, manager.getScheduler());
-                        manager.registerOverrideColor(currentPickerHex);
+                        manager.registerOverrideColor(currentPickerHex, true);
                         inputField = "";
                     }
                 }
@@ -106,7 +122,7 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
         if (data.editAction != null) {
             prefs.playerColors.put(data.editAction.toLowerCase(), currentPickerHex);
             prefsStorage.saveAsync(playerUuid, manager.getScheduler());
-            manager.registerOverrideColor(currentPickerHex);
+            manager.registerOverrideColor(currentPickerHex, true);
             refresh();
             return;
         }
@@ -160,6 +176,12 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
             new EventData().append("Action", "ClearGlobal"), false);
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#BackButton",
             new EventData().append("Action", "Back"), false);
+
+        // Nav buttons
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavChannels",
+            new EventData().append("Action", "GoChannels"), false);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavHiddenMuted",
+            new EventData().append("Action", "GoHiddenMuted"), false);
 
         buildList(cmd, evt);
     }

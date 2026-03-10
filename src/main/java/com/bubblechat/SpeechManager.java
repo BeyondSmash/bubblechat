@@ -43,6 +43,7 @@ import com.hypixel.hytale.server.core.modules.entity.component.HeadRotation;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.damage.DeathComponent;
 import com.hypixel.hytale.server.core.modules.entity.tracker.NetworkId;
+import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
@@ -262,6 +263,7 @@ public class SpeechManager {
     private final Map<String, UpdateParticleSystems> overrideSystemPackets = new ConcurrentHashMap<>();
     private BubbleThemeStorage themeStorage;
     private PlayerBubblePrefsStorage prefsStorage;
+    private ChannelStorage channelStorage;
 
     public void setScheduler(ScheduledExecutorService scheduler) {
         this.scheduler = scheduler;
@@ -277,6 +279,14 @@ public class SpeechManager {
 
     public void setPrefsStorage(PlayerBubblePrefsStorage prefsStorage) {
         this.prefsStorage = prefsStorage;
+    }
+
+    public void setChannelStorage(ChannelStorage channelStorage) {
+        this.channelStorage = channelStorage;
+    }
+
+    public ChannelStorage getChannelStorage() {
+        return channelStorage;
     }
 
     public void initResources() {
@@ -581,53 +591,59 @@ public class SpeechManager {
             for (String hex : prefs.playerColors.values()) {
                 registerOverrideColor(hex);
             }
+            // Register channel colors so spawners exist for channel tint
+            for (String hex : prefs.channelColors.values()) {
+                registerOverrideColor(hex);
+            }
         }
 
         try {
             if (playerRef.getPacketHandler() == null) return;
 
-            // Yell particle (BC_Yell cloned from Hedera_Scream)
-            if (cachedYellSpawnerUpdate != null) {
-                playerRef.getPacketHandler().writeNoCache(cachedYellSpawnerUpdate);
+            // Batch ALL spawners and systems into two combined packets to minimize client log spam
+            Map<String, com.hypixel.hytale.protocol.ParticleSpawner> allSpawners = new HashMap<>();
+            Map<String, com.hypixel.hytale.protocol.ParticleSystem> allSystems = new HashMap<>();
+
+            // Collect base bubble spawners
+            if (cachedSpawnerUpdate != null && cachedSpawnerUpdate.particleSpawners != null)
+                allSpawners.putAll(cachedSpawnerUpdate.particleSpawners);
+            if (cachedSystemUpdate != null && cachedSystemUpdate.particleSystems != null)
+                allSystems.putAll(cachedSystemUpdate.particleSystems);
+
+            // Collect yell spawners
+            if (cachedYellSpawnerUpdate != null && cachedYellSpawnerUpdate.particleSpawners != null)
+                allSpawners.putAll(cachedYellSpawnerUpdate.particleSpawners);
+            if (cachedYellSystemUpdate != null && cachedYellSystemUpdate.particleSystems != null)
+                allSystems.putAll(cachedYellSystemUpdate.particleSystems);
+
+            // Collect per-speaker custom-colored spawners
+            for (var pkt : customColorSpawnerPackets.values()) {
+                if (pkt.particleSpawners != null) allSpawners.putAll(pkt.particleSpawners);
             }
-            if (cachedYellSystemUpdate != null) {
-                playerRef.getPacketHandler().writeNoCache(cachedYellSystemUpdate);
+            for (var pkt : customColorSystemPackets.values()) {
+                if (pkt.particleSystems != null) allSystems.putAll(pkt.particleSystems);
             }
 
-            // Send generic bubble spawner + system defs (color applied via ModelParticle.color at spawn time)
-            if (cachedSpawnerUpdate != null) {
-                playerRef.getPacketHandler().writeNoCache(cachedSpawnerUpdate);
+            // Collect viewer-override color spawners
+            for (var pkt : overrideSpawnerPackets.values()) {
+                if (pkt.particleSpawners != null) allSpawners.putAll(pkt.particleSpawners);
             }
-            if (cachedSystemUpdate != null) {
-                playerRef.getPacketHandler().writeNoCache(cachedSystemUpdate);
+            for (var pkt : overrideSystemPackets.values()) {
+                if (pkt.particleSystems != null) allSystems.putAll(pkt.particleSystems);
+            }
+
+            // Send as two batched packets (1 spawner + 1 system = 2 client log lines)
+            if (!allSpawners.isEmpty()) {
+                playerRef.getPacketHandler().writeNoCache(
+                    new UpdateParticleSpawners(UpdateType.AddOrUpdate, allSpawners, null));
+            }
+            if (!allSystems.isEmpty()) {
+                playerRef.getPacketHandler().writeNoCache(
+                    new UpdateParticleSystems(UpdateType.AddOrUpdate, allSystems, null));
             }
         } catch (Exception e) {
             LOGGER.atWarning().log("Failed to send particle configs to %s: %s",
                 playerRef.getUsername(), e.getMessage());
-        }
-
-        // Send any active per-speaker custom-colored spawners
-        for (var entry : customColorSpawnerPackets.entrySet()) {
-            try {
-                playerRef.getPacketHandler().writeNoCache(entry.getValue());
-            } catch (Exception ignored) {}
-        }
-        for (var entry : customColorSystemPackets.entrySet()) {
-            try {
-                playerRef.getPacketHandler().writeNoCache(entry.getValue());
-            } catch (Exception ignored) {}
-        }
-
-        // Send any registered viewer-override color spawners
-        for (var entry : overrideSpawnerPackets.entrySet()) {
-            try {
-                playerRef.getPacketHandler().writeNoCache(entry.getValue());
-            } catch (Exception ignored) {}
-        }
-        for (var entry : overrideSystemPackets.entrySet()) {
-            try {
-                playerRef.getPacketHandler().writeNoCache(entry.getValue());
-            } catch (Exception ignored) {}
         }
     }
 
@@ -708,6 +724,15 @@ public class SpeechManager {
      * Called from PlayerColorsPage when viewer sets/edits a color override.
      */
     public void registerOverrideColor(String hex) {
+        registerOverrideColor(hex, false);
+    }
+
+    /**
+     * Register override color spawners. If broadcast=true, sends to all connected players immediately
+     * (used when a color changes mid-session from settings pages). If broadcast=false, only stores
+     * the packets for later batched delivery via sendParticleConfigs.
+     */
+    public void registerOverrideColor(String hex, boolean broadcast) {
         if (hex == null) return;
         String normalized = hex.startsWith("#") ? hex : "#" + hex;
         if (overrideColorPrefixes.containsKey(normalized)) return; // already registered
@@ -758,14 +783,16 @@ public class SpeechManager {
         overrideSpawnerPackets.put(normalized, spawnerPacket);
         overrideSystemPackets.put(normalized, systemPacket);
 
-        // Send to all connected players
-        for (PlayerRef p : Universe.get().getPlayers()) {
-            try {
-                if (p.getPacketHandler() != null) {
-                    p.getPacketHandler().writeNoCache(spawnerPacket);
-                    p.getPacketHandler().writeNoCache(systemPacket);
-                }
-            } catch (Exception ignored) {}
+        // Only broadcast mid-session (settings page changes); on-connect is handled by batched sendParticleConfigs
+        if (broadcast) {
+            for (PlayerRef p : Universe.get().getPlayers()) {
+                try {
+                    if (p.getPacketHandler() != null) {
+                        p.getPacketHandler().writeNoCache(spawnerPacket);
+                        p.getPacketHandler().writeNoCache(systemPacket);
+                    }
+                } catch (Exception ignored) {}
+            }
         }
 
         LOGGER.atInfo().log("Registered override color spawners (hex=%s, prefix=%s)", normalized, prefix);
@@ -773,14 +800,14 @@ public class SpeechManager {
 
     /**
      * Resolve spawner name for a specific viewer watching a specific speaker.
-     * Priority: viewer global override > viewer per-player override > speaker's own custom > default.
+     * Priority: viewer global override > viewer per-player override > channel color > speaker's own custom > default.
      */
     private String resolveSpawnerNameForViewer(UUID viewerUuid, UUID speakerUuid,
                                                 String speakerLowerName, int lineCount, int tileCount) {
         PlayerBubbleTheme speakerTheme = themeStorage != null ? themeStorage.getTheme(speakerUuid) : new PlayerBubbleTheme();
         boolean light = speakerTheme.lightMode;
 
-        // Check viewer override
+        // Check viewer override (global or per-player — highest priority)
         String overridePrefix = null;
         if (prefsStorage != null && speakerLowerName != null) {
             PlayerBubblePrefs viewerPrefs = prefsStorage.getPrefs(viewerUuid);
@@ -800,8 +827,44 @@ public class SpeechManager {
             return overridePrefix + "_" + lineType + tileCount;
         }
 
+        // Channel color override — if speaker is in an RP channel, viewer sees channel's tint
+        SpeechState state = activeSpeech.get(speakerUuid);
+        if (state != null && state.getChannelPin() != null && prefsStorage != null) {
+            PlayerBubblePrefs viewerPrefs = prefsStorage.getPrefs(viewerUuid);
+            String channelKey = getChannelKeyForViewer(viewerPrefs, state.getChannelPin());
+            if (channelKey != null) {
+                String channelHex = viewerPrefs.getChannelColor(channelKey);
+                if (channelHex != null) {
+                    String normalized = channelHex.startsWith("#") ? channelHex : "#" + channelHex;
+                    String channelPrefix = overrideColorPrefixes.get(normalized);
+                    if (channelPrefix != null) {
+                        String lineType = lineCount >= 3
+                            ? (light ? "3Liner_Light_" : "3Liner_")
+                            : lineCount >= 2
+                                ? (light ? "2Liner_Light_" : "2Liner_")
+                                : (light ? "Bubble_Light_" : "Bubble_");
+                        return channelPrefix + "_" + lineType + tileCount;
+                    }
+                }
+            }
+        }
+
         // Fall back to speaker's own custom color or default
         return resolveSpawnerName(speakerUuid, lineCount, tileCount);
+    }
+
+    /**
+     * Get the channel color key (rp1/rp2/rp3) for a viewer seeing a message from a specific channel.
+     * Returns null if the viewer is not in this channel.
+     */
+    @Nullable
+    private String getChannelKeyForViewer(PlayerBubblePrefs viewerPrefs, String channelPin) {
+        for (int i = 0; i < viewerPrefs.channelSlots.length; i++) {
+            if (channelPin.equals(viewerPrefs.channelSlots[i])) {
+                return "rp" + (i + 1);
+            }
+        }
+        return null;
     }
 
     static String[] tokenizeMessage(String message) {
@@ -936,6 +999,15 @@ public class SpeechManager {
         return !disabledPlayers.contains(uuid);
     }
 
+    public void enablePlayer(UUID uuid) {
+        disabledPlayers.remove(uuid);
+    }
+
+    public void disablePlayer(UUID uuid) {
+        disabledPlayers.add(uuid);
+        clearSpeech(uuid);
+    }
+
     public void setSelfVisible(UUID uuid, boolean visible) {
         if (visible) {
             selfVisiblePlayers.add(uuid);
@@ -980,31 +1052,72 @@ public class SpeechManager {
             speakerLowerName = speakerState.getSpeakerLowerName();
         }
 
+        // Pre-lookup speaker's world UUID to skip cross-world viewers (store.getComponent asserts same thread)
+        PlayerRef speakerRef = findPlayerRef(speakerUuid);
+        UUID speakerWorldUuid = speakerRef != null ? speakerRef.getWorldUuid() : null;
+
         for (PlayerRef p : Universe.get().getPlayers()) {
-            if (!includeSelf && p.getUuid().equals(speakerUuid)) continue;
+            UUID pUuid = p.getUuid();
+            boolean isSelf = pUuid.equals(speakerUuid);
+
+            if (!includeSelf && isSelf) continue;
 
             Ref<EntityStore> ref = p.getReference();
             if (ref == null || !ref.isValid()) continue;
 
+            // Skip viewers in different world instances (e.g. dungeon portals)
+            if (speakerWorldUuid != null && !speakerWorldUuid.equals(p.getWorldUuid())) {
+                continue;
+            }
+
+            // Cache viewer prefs once per viewer (used for hidden/muted, channel, cull, max bubbles)
+            PlayerBubblePrefs viewerPrefs = (prefsStorage != null && !isSelf)
+                    ? prefsStorage.getPrefs(pUuid) : null;
+
             // Check viewer's hidden/muted preferences
-            if (prefsStorage != null && speakerLowerName != null && !p.getUuid().equals(speakerUuid)) {
-                PlayerBubblePrefs viewerPrefs = prefsStorage.getPrefs(p.getUuid());
+            if (viewerPrefs != null && speakerLowerName != null) {
                 if (viewerPrefs.isHidden(speakerLowerName)) continue;
                 if (viewerPrefs.isMuted(speakerLowerName)) continue;
             }
 
-            if (!p.getUuid().equals(speakerUuid) && speakerPos != null) {
-                // Use per-viewer cull distance if prefs available, otherwise default
+            // Channel isolation: if speaker is in an RP channel, only show to members
+            // Skip isolation entirely for dual-visibility bubbles (visible to all)
+            if (speakerState != null && speakerState.isDualVisibilityBubble()) {
+                // No filtering — bubble visible to everyone in range
+            } else if (speakerState != null && speakerState.getChannelPin() != null && channelStorage != null) {
+                String pin = speakerState.getChannelPin();
+                if (!channelStorage.isMember(pin, pUuid)) {
+                    continue;
+                }
+            } else if (viewerPrefs != null && channelStorage != null) {
+                // Public chat — hide bubble from isolated RP channel members without dual visibility
+                String vPin = viewerPrefs.getActiveChannelPin();
+                if (vPin != null && channelStorage.isMember(vPin, pUuid) && !viewerPrefs.dualVisibility) {
+                    continue;
+                }
+            }
+
+            if (!isSelf && speakerPos != null) {
                 double maxRangeSq = VIEW_RANGE_SQ;
-                if (prefsStorage != null) {
-                    int cullDist = prefsStorage.getPrefs(p.getUuid()).getEffectiveCullDistance();
-                    maxRangeSq = (double) cullDist * cullDist;
+                if (viewerPrefs != null) {
+                    boolean isYell = speakerState != null && speakerState.isYellMessage();
+                    if (speakerState != null && speakerState.getChannelPin() != null) {
+                        // RP channel — use viewer's RP cull distance (or yell range)
+                        int range = isYell ? viewerPrefs.getEffectiveYellBubbleRange()
+                                           : viewerPrefs.getEffectiveRpCullDistance();
+                        maxRangeSq = (double) range * range;
+                    } else {
+                        // Public — use viewer's normal cull distance (or yell range)
+                        int range = isYell ? viewerPrefs.getEffectiveYellBubbleRange()
+                                           : viewerPrefs.getEffectiveCullDistance();
+                        maxRangeSq = (double) range * range;
+                    }
                 }
 
-                Store<EntityStore> store = ref.getStore();
-                TransformComponent tc = store.getComponent(ref, TransformComponent.getComponentType());
-                if (tc != null) {
-                    Vector3d vp = tc.getPosition();
+                Store<EntityStore> viewerStore = ref.getStore();
+                TransformComponent vtc = viewerStore.getComponent(ref, TransformComponent.getComponentType());
+                if (vtc != null) {
+                    Vector3d vp = vtc.getPosition();
                     double dx = vp.getX() - speakerPos.getX();
                     double dz = vp.getZ() - speakerPos.getZ();
                     if (dx * dx + dz * dz > maxRangeSq) continue;
@@ -1012,8 +1125,7 @@ public class SpeechManager {
             }
 
             // Check viewer's max bubble count
-            if (prefsStorage != null && !p.getUuid().equals(speakerUuid)) {
-                PlayerBubblePrefs viewerPrefs = prefsStorage.getPrefs(p.getUuid());
+            if (viewerPrefs != null) {
                 int maxBubbles = viewerPrefs.getEffectiveMaxBubbleCount();
                 if (activeSpeech.size() > maxBubbles) {
                     // Count how many active speakers are closer than this one
@@ -1063,14 +1175,148 @@ public class SpeechManager {
         return dx * dx + dz * dz;
     }
 
+    // ---- BusyBubble integration (optional, via reflection) ----
+    private static java.lang.reflect.Method busyBubbleClearMethod;
+    private static boolean busyBubbleChecked = false;
+
+    private static void clearBusyBubble(UUID uuid) {
+        if (!busyBubbleChecked) {
+            busyBubbleChecked = true;
+            try {
+                Class<?> api = Class.forName("com.thinkingbubble.BusyBubbleAPI");
+                busyBubbleClearMethod = api.getMethod("clearBubble", UUID.class);
+            } catch (Exception ignored) {
+                // BusyBubble not installed
+            }
+        }
+        if (busyBubbleClearMethod != null) {
+            try {
+                busyBubbleClearMethod.invoke(null, uuid);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    // ---- onChannelChat: entry point for RP channel chat ----
+    /**
+     * Handle chat in an RP channel.
+     * Sends formatted text message to channel members within range, then triggers bubble.
+     */
+    public void onChannelChat(@Nonnull PlayerRef sender, @Nonnull String message, @Nonnull String channelPin) {
+        onChannelChat(sender, message, channelPin, true);
+    }
+
+    /**
+     * Handle chat in an RP channel.
+     * Sends formatted text message to channel members within range.
+     * @param triggerBubble if true, also triggers a channel-restricted bubble via onChat(channelPin).
+     *                      Set false when dual-visibility sender handles the bubble separately.
+     */
+    public void onChannelChat(@Nonnull PlayerRef sender, @Nonnull String message,
+                               @Nonnull String channelPin, boolean triggerBubble) {
+        UUID uuid = sender.getUuid();
+        if (disabledPlayers.contains(uuid)) return;
+        if (channelStorage == null) return;
+
+        Set<UUID> members = channelStorage.getMembers(channelPin);
+        if (members.isEmpty()) return;
+
+        Ref<EntityStore> senderRef = sender.getReference();
+        if (senderRef == null || !senderRef.isValid()) return;
+
+        // Get sender position
+        Store<EntityStore> store = senderRef.getStore();
+        TransformComponent tc = store.getComponent(senderRef, TransformComponent.getComponentType());
+        Vector3d senderPos = tc != null ? tc.getPosition() : null;
+
+        // Determine if yell
+        boolean isYell = isYellMessage(message);
+
+        // Format chat message with [RP] prefix
+        Message chatMsg = Message.raw("[RP] " + sender.getUsername() + ": " + message);
+
+        // Send text to members in range (using each receiver's own prefs for range)
+        for (UUID memberUuid : members) {
+            if (memberUuid.equals(uuid)) {
+                // Always send text to self
+                sender.sendMessage(chatMsg);
+                continue;
+            }
+
+            PlayerRef memberRef = findPlayerRef(memberUuid);
+            if (memberRef == null) continue;
+
+            // Range check using receiver's prefs
+            if (senderPos != null) {
+                Ref<EntityStore> mRef = memberRef.getReference();
+                if (mRef == null || !mRef.isValid()) continue;
+                Store<EntityStore> mStore = mRef.getStore();
+                TransformComponent mtc = mStore.getComponent(mRef, TransformComponent.getComponentType());
+                if (mtc != null) {
+                    PlayerBubblePrefs memberPrefs = prefsStorage.getPrefs(memberUuid);
+                    int range = isYell ? memberPrefs.getEffectiveYellBubbleRange()
+                                       : memberPrefs.getEffectiveRpCullDistance();
+                    double maxRangeSq = (double) range * range;
+                    Vector3d mPos = mtc.getPosition();
+                    double dx = mPos.getX() - senderPos.getX();
+                    double dz = mPos.getZ() - senderPos.getZ();
+                    if (dx * dx + dz * dz > maxRangeSq) continue;
+                }
+            }
+
+            memberRef.sendMessage(chatMsg);
+        }
+
+        if (triggerBubble) {
+            // Trigger channel-restricted bubble
+            onChat(sender, message, channelPin);
+        }
+    }
+
+    // ---- queueConfirmation: show confirm HUD before channel switch ----
+    public void queueConfirmation(@Nonnull PlayerRef sender, @Nonnull String prefix,
+                                   int targetSlot, @Nonnull String message) {
+        UUID uuid = sender.getUuid();
+        Ref<EntityStore> ref = sender.getReference();
+        if (ref == null || !ref.isValid()) return;
+        Store<EntityStore> store = ref.getStore();
+        com.hypixel.hytale.server.core.entity.entities.Player player =
+            store.getComponent(ref, com.hypixel.hytale.server.core.entity.entities.Player.getComponentType());
+        if (player == null) return;
+
+        String confirmText;
+        if ("pbc".equals(prefix)) {
+            confirmText = "Send to public chat? Everyone will see this.";
+        } else {
+            int slotNum = targetSlot + 1;
+            confirmText = "Switch to RP Channel " + slotNum + " before sending?";
+        }
+
+        ChannelConfirmHud hud = new ChannelConfirmHud(
+            this, prefsStorage, channelStorage, sender, uuid,
+            prefix, targetSlot, message, confirmText);
+        player.getPageManager().openCustomPage(ref, store, hud);
+    }
+
     // ---- onChat: entry point from chat event ----
     public void onChat(@Nonnull PlayerRef sender, @Nonnull String message) {
+        onChat(sender, message, null, false);
+    }
+
+    public void onChat(@Nonnull PlayerRef sender, @Nonnull String message, @Nullable String channelPin) {
+        onChat(sender, message, channelPin, false);
+    }
+
+    public void onChat(@Nonnull PlayerRef sender, @Nonnull String message,
+                        @Nullable String channelPin, boolean dualVisibility) {
         UUID uuid = sender.getUuid();
 
         if (disabledPlayers.contains(uuid)) return;
 
         String[] words = tokenizeMessage(message);
         if (words.length == 0) return;
+
+        // Clear BusyBubble thinking bubble if present (optional dependency via reflection)
+        clearBusyBubble(uuid);
 
         Ref<EntityStore> senderRef = sender.getReference();
         if (senderRef == null || !senderRef.isValid()) return;
@@ -1086,6 +1332,9 @@ public class SpeechManager {
 
         String speakerLowerName = sender.getUsername().toLowerCase();
         SpeechState state = new SpeechState(uuid, speakerLowerName, words, gen, world);
+        state.setYellMessage(isYellMessage(message));
+        if (channelPin != null) state.setChannelPin(channelPin);
+        if (dualVisibility) state.setDualVisibilityBubble(true);
 
         // Plan superpages (capped at MAX_SUPERPAGES)
         int[] plan = planSuperpages(words, 0);
@@ -1816,6 +2065,11 @@ public class SpeechManager {
         Vector3d lastPos = state.getLastPosition();
         broadcastMouthReset(uuid, playerNetId, lastPos);
 
+        // Collect viewers BEFORE removing from activeSpeech — getViewers() needs
+        // the SpeechState to apply correct channel isolation for despawn targeting
+        int[] despawnIds = collectDespawnIds(state);
+        List<PlayerRef> viewers = despawnIds.length > 0 ? getViewers(uuid, null) : List.of();
+
         activeSpeech.remove(uuid);
         pendingReveals.remove(uuid);
         lastParticleSendTime.remove(uuid);
@@ -1824,22 +2078,33 @@ public class SpeechManager {
 
         // Despawn virtual entity/entities + page indicator
         // Send to ALL players (no cull distance) to ensure cleanup reaches viewers who may have moved away
+        if (despawnIds.length > 0) {
+            EntityUpdates despawnPacket = new EntityUpdates(despawnIds, null);
+            for (PlayerRef viewer : viewers) {
+                viewer.getPacketHandler().writeNoCache(despawnPacket);
+            }
+        }
+    }
+
+    /** Collect virtual entity + page indicator network IDs for despawn into a compact int[]. */
+    private static int[] collectDespawnIds(SpeechState state) {
         int netId = state.getVirtualEntityNetId();
         int line2NetId = state.getLine2NetId();
         int line3NetId = state.getLine3NetId();
         int piNetId = state.getPageIndicatorNetId();
-        List<Integer> despawnIds = new ArrayList<>();
-        if (netId >= 0) despawnIds.add(netId);
-        if (line2NetId >= 0) despawnIds.add(line2NetId);
-        if (line3NetId >= 0) despawnIds.add(line3NetId);
-        if (piNetId >= 0) despawnIds.add(piNetId);
-        if (!despawnIds.isEmpty()) {
-            int[] ids = despawnIds.stream().mapToInt(Integer::intValue).toArray();
-            EntityUpdates despawnPacket = new EntityUpdates(ids, null);
-            for (PlayerRef viewer : getViewers(uuid, null)) {
-                viewer.getPacketHandler().writeNoCache(despawnPacket);
-            }
-        }
+        int count = 0;
+        if (netId >= 0) count++;
+        if (line2NetId >= 0) count++;
+        if (line3NetId >= 0) count++;
+        if (piNetId >= 0) count++;
+        if (count == 0) return new int[0];
+        int[] ids = new int[count];
+        int idx = 0;
+        if (netId >= 0) ids[idx++] = netId;
+        if (line2NetId >= 0) ids[idx++] = line2NetId;
+        if (line3NetId >= 0) ids[idx++] = line3NetId;
+        if (piNetId >= 0) ids[idx++] = piNetId;
+        return ids;
     }
 
     // ---- Select tile count using linear scaling + weighted width ----
@@ -2092,7 +2357,20 @@ public class SpeechManager {
     }
 
     public void clearSpeech(UUID uuid) {
-        SpeechState state = activeSpeech.remove(uuid);
+        SpeechState state = activeSpeech.get(uuid);
+
+        // Build despawnIds + collect viewers BEFORE removing from activeSpeech —
+        // getViewers() needs the SpeechState for correct channel isolation targeting
+        int[] despawnIds = null;
+        List<PlayerRef> viewers = List.of();
+        if (state != null) {
+            despawnIds = collectDespawnIds(state);
+            if (despawnIds.length > 0) {
+                viewers = getViewers(uuid, null);
+            }
+        }
+
+        activeSpeech.remove(uuid);
         ScheduledFuture<?> rf = pendingReveals.remove(uuid);
         if (rf != null) rf.cancel(false);
         ScheduledFuture<?> pf = pendingParticleLoops.remove(uuid);
@@ -2105,20 +2383,10 @@ public class SpeechManager {
             Vector3d lastPos = state.getLastPosition();
             broadcastMouthReset(uuid, playerNetId, lastPos);
 
-            // Send to ALL players (no cull distance) to ensure cleanup reaches viewers who may have moved away
-            int netId = state.getVirtualEntityNetId();
-            int line2NetId = state.getLine2NetId();
-            int line3NetId = state.getLine3NetId();
-            int piNetId = state.getPageIndicatorNetId();
-            List<Integer> despawnIds = new ArrayList<>();
-            if (netId >= 0) despawnIds.add(netId);
-            if (line2NetId >= 0) despawnIds.add(line2NetId);
-            if (line3NetId >= 0) despawnIds.add(line3NetId);
-            if (piNetId >= 0) despawnIds.add(piNetId);
-            if (!despawnIds.isEmpty()) {
-                int[] ids = despawnIds.stream().mapToInt(Integer::intValue).toArray();
-                EntityUpdates despawnPacket = new EntityUpdates(ids, null);
-                for (PlayerRef viewer : getViewers(uuid, null)) {
+            // Send despawn to all viewers (no cull distance) to ensure cleanup
+            if (despawnIds != null && despawnIds.length > 0) {
+                EntityUpdates despawnPacket = new EntityUpdates(despawnIds, null);
+                for (PlayerRef viewer : viewers) {
                     viewer.getPacketHandler().writeNoCache(despawnPacket);
                 }
             }
@@ -2226,6 +2494,14 @@ public class SpeechManager {
         return word.endsWith("!");
     }
 
+    /** Check if any word in the message is a yell word (ALL CAPS 2+ letters or ends with !). */
+    private static boolean isYellMessage(String message) {
+        for (String w : message.split("\\s+")) {
+            if (isYellWord(w)) return true;
+        }
+        return false;
+    }
+
     private void sendYellParticle(UUID speakerUuid) {
         PlayerRef playerRef = findPlayerRef(speakerUuid);
         if (playerRef == null) return;
@@ -2246,9 +2522,38 @@ public class SpeechManager {
         SpawnParticleSystem packet = new SpawnParticleSystem(
             "BC_Yell", new Position(px, py, pz), null, 0.08f, null);
 
-        for (PlayerRef viewer : getViewers(speakerUuid, pos)) {
-            // Per-viewer yell preference
-            if (prefsStorage != null && !prefsStorage.getPrefs(viewer.getUuid()).yellEnabled) continue;
+        // Check if speaker is in a channel
+        SpeechState state = activeSpeech.get(speakerUuid);
+        String channelPin = state != null ? state.getChannelPin() : null;
+
+        for (PlayerRef viewer : Universe.get().getPlayers()) {
+            if (viewer.getUuid().equals(speakerUuid)) continue;
+
+            // Channel isolation
+            if (channelPin != null && channelStorage != null) {
+                if (!channelStorage.isMember(channelPin, viewer.getUuid())) continue;
+            }
+
+            // Cache prefs once per viewer (used for yell preference + range check)
+            if (prefsStorage != null) {
+                PlayerBubblePrefs viewerPrefs = prefsStorage.getPrefs(viewer.getUuid());
+                if (!viewerPrefs.yellEnabled) continue;
+
+                // Yell particle range check
+                int yellPartRange = viewerPrefs.getEffectiveYellParticleRange();
+                Ref<EntityStore> vRef = viewer.getReference();
+                if (vRef != null && vRef.isValid()) {
+                    Store<EntityStore> vStore = vRef.getStore();
+                    TransformComponent vtc = vStore.getComponent(vRef, TransformComponent.getComponentType());
+                    if (vtc != null) {
+                        Vector3d vPos = vtc.getPosition();
+                        double dx = vPos.getX() - pos.getX();
+                        double dz = vPos.getZ() - pos.getZ();
+                        if (dx * dx + dz * dz > (double) yellPartRange * yellPartRange) continue;
+                    }
+                }
+            }
+
             viewer.getPacketHandler().writeNoCache(packet);
         }
     }

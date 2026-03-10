@@ -79,4 +79,13 @@ public final class BubbleChatAPI {
         if (manager == null) return false;
         return manager.hasActiveBubble(playerRef.getUuid());
     }
+
+    /**
+     * Check if a player currently has an active speech bubble (by UUID).
+     * Used by BusyBubble via reflection to avoid spawning while a speech bubble is active.
+     */
+    public static boolean hasActiveBubble(@Nonnull java.util.UUID playerUuid) {
+        if (manager == null) return false;
+        return manager.hasActiveBubble(playerUuid);
+    }
 }
