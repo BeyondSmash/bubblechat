@@ -1,0 +1,5 @@
+{
+  "Layers": [{ "Files": ["Sounds/BubbleChat/Voice8/O.ogg"] }],
+  "Volume": 0.0,
+  "Parent": "SFX_Attn_Moderate"
+}

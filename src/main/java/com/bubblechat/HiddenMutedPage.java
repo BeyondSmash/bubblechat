@@ -31,6 +31,7 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
 
     private String hideInput = "";
     private String muteInput = "";
+    private String animMuteInput = "";
     private String muteDurationValue = "3600000"; // default 1h in ms
 
     private static final long[] DURATION_MS = {
@@ -65,7 +66,11 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
     public void build(@Nonnull Ref<EntityStore> ref, @Nonnull UICommandBuilder cmd,
                       @Nonnull UIEventBuilder evt, @Nonnull Store<EntityStore> store) {
         cmd.append("HiddenMuted.ui");
-        applySettings(cmd, evt);
+        applyValues(cmd);
+        registerEvents(evt);
+        buildHiddenList(cmd, evt);
+        buildMutedList(cmd, evt);
+        buildAnimMutedList(cmd, evt);
     }
 
     @Override
@@ -75,6 +80,7 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
 
         if (data.hideInput != null) hideInput = data.hideInput;
         if (data.muteInput != null) muteInput = data.muteInput;
+        if (data.animMuteInput != null) animMuteInput = data.animMuteInput;
 
         // Duration dropdown change
         if (data.dropdownId != null && "MuteDuration".equals(data.dropdownId) && data.dropdownValue != null) {
@@ -108,6 +114,14 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
                     }
                     return;
                 }
+                case "GoVoice" -> {
+                    Player player4 = store.getComponent(ref, Player.getComponentType());
+                    if (player4 != null) {
+                        player4.getPageManager().openCustomPage(ref, store,
+                            new VoicePage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
+                    return;
+                }
                 case "Hide" -> {
                     if (hideInput != null && !hideInput.trim().isEmpty()) {
                         String name = hideInput.trim().toLowerCase();
@@ -131,6 +145,14 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
                         muteInput = "";
                     }
                 }
+                case "AnimMute" -> {
+                    if (animMuteInput != null && !animMuteInput.trim().isEmpty()) {
+                        String name = animMuteInput.trim().toLowerCase();
+                        prefs.animaleseMutedPlayers.add(name);
+                        prefsStorage.saveAsync(playerUuid, manager.getScheduler());
+                        animMuteInput = "";
+                    }
+                }
             }
             refresh();
             return;
@@ -147,17 +169,56 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
             prefs.mutedPlayers.remove(data.removeMuted.toLowerCase());
             prefsStorage.saveAsync(playerUuid, manager.getScheduler());
             refresh();
+            return;
+        }
+
+        if (data.removeAnimMuted != null) {
+            prefs.animaleseMutedPlayers.remove(data.removeAnimMuted.toLowerCase());
+            prefsStorage.saveAsync(playerUuid, manager.getScheduler());
+            refresh();
         }
     }
 
+    /** Refresh values only — static events are registered once in build(). */
     private void refresh() {
         UICommandBuilder cmd = new UICommandBuilder();
         UIEventBuilder evt = new UIEventBuilder();
-        applySettings(cmd, evt);
+        applyValues(cmd);
+        // Dynamic list entries need fresh event bindings (elements are rebuilt)
+        buildHiddenList(cmd, evt);
+        buildMutedList(cmd, evt);
+        buildAnimMutedList(cmd, evt);
         sendUpdate(cmd, evt, false);
     }
 
-    private void applySettings(@Nonnull UICommandBuilder cmd, @Nonnull UIEventBuilder evt) {
+    /** Set current UI values (called from build + refresh). */
+    private void applyValues(@Nonnull UICommandBuilder cmd) {
+        // Sync input fields with server state (clears after Hide/Mute)
+        cmd.set("#HideInput.Value", hideInput);
+        cmd.set("#MuteInput.Value", muteInput);
+        cmd.set("#AnimMuteInput.Value", animMuteInput);
+
+        // Duration dropdown
+        List<DropdownEntryInfo> durEntries = new ArrayList<>();
+        for (int i = 0; i < DURATION_LABELS.length; i++) {
+            durEntries.add(new DropdownEntryInfo(
+                LocalizableString.fromString(DURATION_LABELS[i]),
+                String.valueOf(DURATION_MS[i])));
+        }
+        cmd.set("#DurationDropdown.Entries", durEntries);
+        cmd.set("#DurationDropdown.Value", muteDurationValue);
+
+        // Hide Voice button + animalese mute section if animalese disabled by server config
+        BubbleChatConfig cfg = manager.getServerConfig();
+        if (cfg != null && !cfg.animaleseEnabled) {
+            cmd.set("#NavVoice.Visible", false);
+            cmd.set("#AnimMuteRow.Visible", false);
+            cmd.set("#AnimMutedContainer.Visible", false);
+        }
+    }
+
+    /** Register static event bindings once in build() — never re-sent on refresh. */
+    private void registerEvents(@Nonnull UIEventBuilder evt) {
         // Back button
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#BackButton",
             new EventData().append("Action", "Back"), false);
@@ -167,10 +228,8 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
             new EventData().append("Action", "GoPlayerColors"), false);
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavChannels",
             new EventData().append("Action", "GoChannels"), false);
-
-        // Sync input fields with server state (clears after Hide/Mute)
-        cmd.set("#HideInput.Value", hideInput);
-        cmd.set("#MuteInput.Value", muteInput);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavVoice",
+            new EventData().append("Action", "GoVoice"), false);
 
         // Hide section
         evt.addEventBinding(CustomUIEventBindingType.ValueChanged, "#HideInput",
@@ -185,20 +244,14 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
             new EventData().append("Action", "Mute"), false);
 
         // Duration dropdown
-        List<DropdownEntryInfo> durEntries = new ArrayList<>();
-        for (int i = 0; i < DURATION_LABELS.length; i++) {
-            durEntries.add(new DropdownEntryInfo(
-                LocalizableString.fromString(DURATION_LABELS[i]),
-                String.valueOf(DURATION_MS[i])));
-        }
-        cmd.set("#DurationDropdown.Entries", durEntries);
-        cmd.set("#DurationDropdown.Value", muteDurationValue);
         evt.addEventBinding(CustomUIEventBindingType.ValueChanged, "#DurationDropdown",
             EventData.of("DropdownId", "MuteDuration").append("@DropdownValue", "#DurationDropdown.Value"), false);
 
-        // Build lists
-        buildHiddenList(cmd, evt);
-        buildMutedList(cmd, evt);
+        // Animalese mute section
+        evt.addEventBinding(CustomUIEventBindingType.ValueChanged, "#AnimMuteInput",
+            new EventData().append("@AnimMuteInput", "#AnimMuteInput.Value"), false);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#AnimMuteButton",
+            new EventData().append("Action", "AnimMute"), false);
     }
 
     private void buildHiddenList(@Nonnull UICommandBuilder cmd, @Nonnull UIEventBuilder evt) {
@@ -268,6 +321,34 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
         }
     }
 
+    private void buildAnimMutedList(@Nonnull UICommandBuilder cmd, @Nonnull UIEventBuilder evt) {
+        PlayerBubblePrefs prefs = prefsStorage.getPrefs(playerUuid);
+
+        cmd.clear("#AnimMutedCards");
+        cmd.appendInline("#AnimMutedContainer", "Group #AnimMutedCards { LayoutMode: Top; }");
+
+        List<String> sorted = new ArrayList<>(prefs.animaleseMutedPlayers);
+        Collections.sort(sorted);
+
+        if (sorted.isEmpty()) {
+            cmd.appendInline("#AnimMutedCards",
+                "Label { Text: \"No animalese-muted players.\"; Style: (FontSize: 14, TextColor: #888888); Anchor: (Top: 6); }");
+            return;
+        }
+
+        for (int i = 0; i < sorted.size(); i++) {
+            String name = sorted.get(i);
+            cmd.append("#AnimMutedCards", "HiddenMutedEntry.ui");
+            cmd.set("#AnimMutedCards[" + i + "] #EntryName.Text", name);
+            cmd.set("#AnimMutedCards[" + i + "] #TimeLabel.Text", "");
+            cmd.set("#AnimMutedCards[" + i + "] #RemoveButton.Text", "Unmute");
+
+            evt.addEventBinding(CustomUIEventBindingType.Activating,
+                "#AnimMutedCards[" + i + "] #RemoveButton",
+                new EventData().append("RemoveAnimMuted", name), false);
+        }
+    }
+
     private static String formatTimeRemaining(long ms) {
         if (ms <= 0) return "expired";
         long hours = TimeUnit.MILLISECONDS.toHours(ms);
@@ -296,6 +377,10 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
                 (d, v) -> d.removeHidden = v, d -> d.removeHidden)
             .addField(new KeyedCodec<>("RemoveMuted", Codec.STRING),
                 (d, v) -> d.removeMuted = v, d -> d.removeMuted)
+            .addField(new KeyedCodec<>("@AnimMuteInput", Codec.STRING),
+                (d, v) -> d.animMuteInput = v, d -> d.animMuteInput)
+            .addField(new KeyedCodec<>("RemoveAnimMuted", Codec.STRING),
+                (d, v) -> d.removeAnimMuted = v, d -> d.removeAnimMuted)
             .addField(new KeyedCodec<>("DropdownId", Codec.STRING),
                 (d, v) -> d.dropdownId = v, d -> d.dropdownId)
             .addField(new KeyedCodec<>("@DropdownValue", Codec.STRING),
@@ -305,8 +390,10 @@ public class HiddenMutedPage extends InteractiveCustomUIPage<HiddenMutedPage.Pag
         String action;
         String hideInput;
         String muteInput;
+        String animMuteInput;
         String removeHidden;
         String removeMuted;
+        String removeAnimMuted;
         String dropdownId;
         String dropdownValue;
     }

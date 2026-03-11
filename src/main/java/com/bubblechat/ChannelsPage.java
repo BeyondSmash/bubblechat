@@ -83,9 +83,12 @@ public class ChannelsPage extends InteractiveCustomUIPage<ChannelsPage.PageData>
                     }
                     return;
                 }
-                case "GoChannels" -> {
-                    // Already on this page — just refresh
-                    refresh();
+                case "GoVoice" -> {
+                    Player player = store.getComponent(ref, Player.getComponentType());
+                    if (player != null) {
+                        player.getPageManager().openCustomPage(ref, store,
+                            new VoicePage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
                     return;
                 }
                 case "GoHiddenMuted" -> {
@@ -289,10 +292,10 @@ public class ChannelsPage extends InteractiveCustomUIPage<ChannelsPage.PageData>
         // Nav buttons
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavPlayerColors",
             new EventData().append("Action", "GoPlayerColors"), false);
-        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavChannels",
-            new EventData().append("Action", "GoChannels"), false);
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavHiddenMuted",
             new EventData().append("Action", "GoHiddenMuted"), false);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavVoice",
+            new EventData().append("Action", "GoVoice"), false);
 
         // Slot dropdown
         evt.addEventBinding(CustomUIEventBindingType.ValueChanged, "#SlotDropdown",
@@ -448,6 +451,12 @@ public class ChannelsPage extends InteractiveCustomUIPage<ChannelsPage.PageData>
         cmd.set("#Rp1Swatch.Background.Color", prefs.channelColors.getOrDefault("rp1", "#2d3d5a") + "FF");
         cmd.set("#Rp2Swatch.Background.Color", prefs.channelColors.getOrDefault("rp2", "#3d2d5a") + "FF");
         cmd.set("#Rp3Swatch.Background.Color", prefs.channelColors.getOrDefault("rp3", "#2d5a3d") + "FF");
+
+        // Hide Voice button if animalese disabled by server config
+        BubbleChatConfig cfg = manager.getServerConfig();
+        if (cfg != null && !cfg.animaleseEnabled) {
+            cmd.set("#NavVoice.Visible", false);
+        }
     }
 
     private void setToggleVisibility(UICommandBuilder cmd,

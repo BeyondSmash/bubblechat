@@ -54,6 +54,10 @@ import com.hypixel.hytale.protocol.ItemAnimation;
 import com.hypixel.hytale.protocol.ItemPlayerAnimations;
 import com.hypixel.hytale.protocol.packets.assets.UpdateItemPlayerAnimations;
 
+import com.hypixel.hytale.server.core.universe.world.SoundUtil;
+import com.hypixel.hytale.protocol.SoundCategory;
+import com.hypixel.hytale.server.core.util.TempAssetIdUtil;
+
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 import javax.annotation.Nonnull;
@@ -67,6 +71,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 public class SpeechManager {
@@ -264,6 +269,10 @@ public class SpeechManager {
     private BubbleThemeStorage themeStorage;
     private PlayerBubblePrefsStorage prefsStorage;
     private ChannelStorage channelStorage;
+    private BubbleChatConfig serverConfig;
+
+    /** Cached sound event indices: [voiceType 0-7][letter 0-25]. 0 = not found. */
+    private final int[][] animaleseSoundIndices = new int[8][26];
 
     public void setScheduler(ScheduledExecutorService scheduler) {
         this.scheduler = scheduler;
@@ -289,6 +298,14 @@ public class SpeechManager {
         return channelStorage;
     }
 
+    public void setServerConfig(BubbleChatConfig serverConfig) {
+        this.serverConfig = serverConfig;
+    }
+
+    public BubbleChatConfig getServerConfig() {
+        return serverConfig;
+    }
+
     public void initResources() {
         // Cache Mouse model for virtual entity floating text
         try {
@@ -307,6 +324,18 @@ public class SpeechManager {
 
         // Build runtime-cloned particle system (JSON spawners silently fail on client)
         buildParticlePackets();
+
+        // Cache Animalese sound event indices
+        int loaded = 0;
+        for (int v = 0; v < 8; v++) {
+            for (int c = 0; c < 26; c++) {
+                char letter = (char) ('A' + c);
+                int idx = TempAssetIdUtil.getSoundEventIndex("BC_Voice" + (v + 1) + "_" + letter);
+                animaleseSoundIndices[v][c] = idx;
+                if (idx != 0) loaded++;
+            }
+        }
+        LOGGER.atInfo().log("[BubbleChat] Animalese: cached %d/208 sound indices", loaded);
     }
 
     /**
@@ -550,8 +579,7 @@ public class SpeechManager {
         // to ALL players (25-44ms client cost), causing visible world particle refresh.
         // Color/mode changes take effect on next chat message.
         if (themeStorage != null) {
-            PlayerBubbleTheme theme = themeStorage.getTheme(uuid);
-            Color customTint = theme.toProtocolColor();
+            Color customTint = resolveEffectiveTint(uuid);
             if (customTint != null) {
                 // Mark stale so onChat re-registers with new color
                 registeredCustomColorHex.remove(uuid);
@@ -699,10 +727,8 @@ public class SpeechManager {
         customColorPrefixes.put(speakerUuid, prefix);
 
         // Track which hex was registered so we detect color changes in onChat
-        if (themeStorage != null) {
-            PlayerBubbleTheme t = themeStorage.getTheme(speakerUuid);
-            if (t.tintColorHex != null) registeredCustomColorHex.put(speakerUuid, t.tintColorHex);
-        }
+        String effectiveHex = resolveEffectiveHex(speakerUuid);
+        if (effectiveHex != null) registeredCustomColorHex.put(speakerUuid, effectiveHex);
 
         // Send to all connected players
         for (PlayerRef p : Universe.get().getPlayers()) {
@@ -1417,10 +1443,9 @@ public class SpeechManager {
 
             // Register per-speaker custom color spawners (one-time, or re-register if color changed)
             if (themeStorage != null && state.getPlayerNetworkId() >= 0) {
-                PlayerBubbleTheme speakerTheme = themeStorage.getTheme(uuid);
-                Color customTint = speakerTheme.toProtocolColor();
+                Color customTint = resolveEffectiveTint(uuid);
                 if (customTint != null) {
-                    String currentHex = speakerTheme.tintColorHex;
+                    String currentHex = resolveEffectiveHex(uuid);
                     String registeredHex = registeredCustomColorHex.get(uuid);
                     boolean needsRegister = !customColorPrefixes.containsKey(uuid)
                             || registeredHex == null
@@ -1511,6 +1536,7 @@ public class SpeechManager {
             // Start mouth animation: register BC_Talk + play first word's mouth
             registerMouthAnims(uuid, pos);
             broadcastMouthForWord(uuid, words[0]);
+            broadcastAnimaleseForWord(uuid, words[0]);
             if (isYellWord(words[0])) sendYellParticle(uuid);
 
             if (words.length > 1 && !state.isComplete()) {
@@ -1639,7 +1665,7 @@ public class SpeechManager {
 
             world.execute(() -> {
                 Long cg = generationCounters.get(uuid);
-                if (cg == null || cg != gen) return;
+                if (cg == null || cg.longValue() != gen) return;
 
                 SpeechState s = activeSpeech.get(uuid);
                 if (s == null || s.getGeneration() != gen) return;
@@ -1676,6 +1702,7 @@ public class SpeechManager {
 
         s.setCurrentWordIndex(nextIdx);
         broadcastMouthForWord(uuid, s.getWords()[nextIdx]);
+        broadcastAnimaleseForWord(uuid, s.getWords()[nextIdx]);
         if (isYellWord(s.getWords()[nextIdx])) sendYellParticle(uuid);
         String displayText = s.buildDisplayText();
 
@@ -1740,6 +1767,7 @@ public class SpeechManager {
 
         s.setCurrentWordIndex(nextIdx);
         broadcastMouthForWord(uuid, s.getWords()[nextIdx]);
+        broadcastAnimaleseForWord(uuid, s.getWords()[nextIdx]);
         if (isYellWord(s.getWords()[nextIdx])) sendYellParticle(uuid);
         boolean onLine1 = nextIdx <= line1End;
         boolean onLine2 = !onLine1 && nextIdx <= line2End;
@@ -1831,7 +1859,7 @@ public class SpeechManager {
 
             world.execute(() -> {
                 Long cg = generationCounters.get(uuid);
-                if (cg == null || cg != gen) return;
+                if (cg == null || cg.longValue() != gen) return;
 
                 SpeechState s = activeSpeech.get(uuid);
                 if (s == null || s.getGeneration() != gen) return;
@@ -1957,6 +1985,7 @@ public class SpeechManager {
                 s.setTileCount(selectTileCount(getWeightedLength(spSizeText)));
                 restartParticleLoop(uuid, gen, s);
                 broadcastMouthForWord(uuid, initText);
+                broadcastAnimaleseForWord(uuid, initText);
                 if (isYellWord(initText)) sendYellParticle(uuid);
 
                 // Delay before starting word reveal on new superpage
@@ -1978,7 +2007,7 @@ public class SpeechManager {
 
             world.execute(() -> {
                 Long cg = generationCounters.get(uuid);
-                if (cg == null || cg != gen) return;
+                if (cg == null || cg.longValue() != gen) return;
 
                 SpeechState s = activeSpeech.get(uuid);
                 if (s == null || s.getGeneration() != gen) return;
@@ -2044,7 +2073,7 @@ public class SpeechManager {
             // Despawn nameplates 100ms after fade starts
             scheduler.schedule(() -> {
                 Long cg = generationCounters.get(uuid);
-                if (cg == null || cg != gen) return;
+                if (cg == null || cg.longValue() != gen) return;
                 world.execute(() -> performDespawn(uuid, gen));
             }, 100, TimeUnit.MILLISECONDS);
         }, HOLD_AFTER_COMPLETE_MS, TimeUnit.MILLISECONDS);
@@ -2201,6 +2230,28 @@ public class SpeechManager {
     }
 
     @Nullable
+    /**
+     * Resolve effective bubble tint: player's custom color, or server default if set.
+     * Returns null if neither is configured (use vanilla spawner).
+     */
+    private Color resolveEffectiveTint(UUID uuid) {
+        if (themeStorage == null) return null;
+        PlayerBubbleTheme theme = themeStorage.getTheme(uuid);
+        Color tint = theme.toProtocolColor();
+        if (tint == null && serverConfig != null && serverConfig.defaultBubbleColor != null) {
+            return parseHexColor(serverConfig.defaultBubbleColor);
+        }
+        return tint;
+    }
+
+    private String resolveEffectiveHex(UUID uuid) {
+        if (themeStorage == null) return null;
+        PlayerBubbleTheme theme = themeStorage.getTheme(uuid);
+        if (theme.tintColorHex != null) return theme.tintColorHex;
+        if (serverConfig != null) return serverConfig.defaultBubbleColor;
+        return null;
+    }
+
     private static Color parseHexColor(String hex) {
         try {
             String h = hex.startsWith("#") ? hex.substring(1) : hex;
@@ -2527,7 +2578,7 @@ public class SpeechManager {
         String channelPin = state != null ? state.getChannelPin() : null;
 
         for (PlayerRef viewer : Universe.get().getPlayers()) {
-            if (viewer.getUuid().equals(speakerUuid)) continue;
+            if (viewer.getUuid().equals(speakerUuid) && !selfVisiblePlayers.contains(speakerUuid)) continue;
 
             // Channel isolation
             if (channelPin != null && channelStorage != null) {
@@ -2557,6 +2608,205 @@ public class SpeechManager {
             viewer.getPacketHandler().writeNoCache(packet);
         }
     }
+
+    // ---- Animalese Sound Playback ----
+
+    /**
+     * Play an animalese preview to a single player (for the voice settings test button).
+     * Uses the player's current voice settings but plays at a fixed audible volume.
+     * Must be called from the world thread.
+     */
+    /** Plays animalese preview to the player. Returns total duration in ms. */
+    public long playAnimalesePreview(UUID playerUuid, PlayerRef playerRef, String text,
+                                      World world) {
+        PlayerBubbleTheme theme = themeStorage != null ? themeStorage.getTheme(playerUuid) : null;
+        if (theme == null) return 0;
+
+        int voiceType = Math.max(0, Math.min(7, theme.voiceType));
+        float basePitch = Math.max(0.5f, Math.min(2.0f, theme.pitch)) * 1.5f;
+
+        Ref<EntityStore> ref = playerRef.getReference();
+        if (ref == null || !ref.isValid()) return 0;
+        Store<EntityStore> store = ref.getStore();
+        TransformComponent tc = store.getComponent(ref, TransformComponent.getComponentType());
+        if (tc == null) return 0;
+        Vector3d pos = tc.getPosition();
+
+        // Tokenize into words, cap at 30 chars total for preview
+        String capped = text.length() > 30 ? text.substring(0, 30) : text;
+        String[] words = capped.split("\\s+");
+
+        // Use player's own volume setting (with 0.1x rescale), min 0.05 so preview is always audible
+        PlayerBubblePrefs prefs = prefsStorage != null ? prefsStorage.getPrefs(playerUuid) : null;
+        float previewVol = prefs != null ? Math.max(0.05f, prefs.animaleseVolume * 0.1f) : 0.15f;
+        long wordDelay = 0;
+        long maxDelay = 0;
+
+        for (String word : words) {
+            String letters = word.replaceAll("[^a-zA-Z]", "");
+            if (letters.isEmpty()) { wordDelay += WORD_REVEAL_MS; continue; }
+
+            boolean yellWord = word.endsWith("!");
+            float wordPitch = yellWord ? basePitch * 1.2f : basePitch;
+            long intervalMs = Math.max(50, Math.min(80, WORD_REVEAL_MS / Math.max(letters.length(), 1)));
+
+            for (int i = 0; i < letters.length(); i++) {
+                char ch = letters.charAt(i);
+                int letterIdx = Character.toLowerCase(ch) - 'a';
+                if (letterIdx < 0 || letterIdx > 25) continue;
+                int soundIdx = animaleseSoundIndices[voiceType][letterIdx];
+                if (soundIdx == 0) continue;
+
+                float pitch = wordPitch * (0.9f + ThreadLocalRandom.current().nextFloat() * 0.2f);
+                if (Character.isUpperCase(ch)) pitch *= 1.2f;
+
+                long delay = wordDelay + (long) i * intervalMs;
+                if (delay > maxDelay) maxDelay = delay;
+                final float fPitch = pitch;
+                final int fSoundIdx = soundIdx;
+
+                if (delay == 0) {
+                    try {
+                        SoundUtil.playSoundEvent3dToPlayer(ref, fSoundIdx, SoundCategory.SFX,
+                            pos.getX(), pos.getY(), pos.getZ(), previewVol, fPitch, store);
+                    } catch (Exception ignored) {}
+                } else {
+                    scheduler.schedule(() -> {
+                        world.execute(() -> {
+                            Ref<EntityStore> r = playerRef.getReference();
+                            if (r == null || !r.isValid()) return;
+                            Store<EntityStore> s = r.getStore();
+                            TransformComponent t = s.getComponent(r, TransformComponent.getComponentType());
+                            Vector3d p = t != null ? t.getPosition() : pos;
+                            try {
+                                SoundUtil.playSoundEvent3dToPlayer(r, fSoundIdx, SoundCategory.SFX,
+                                    p.getX(), p.getY(), p.getZ(), previewVol, fPitch, s);
+                            } catch (Exception ignored) {}
+                        });
+                    }, delay, TimeUnit.MILLISECONDS);
+                }
+            }
+            wordDelay += WORD_REVEAL_MS;
+        }
+        // Add a small buffer for the last sound to finish playing
+        return maxDelay + 150;
+    }
+
+    /**
+     * Play Animalese sound for a word — fires per-character 3D sounds to nearby viewers.
+     * Piggybacks on the same timing as mouth animations (50-80ms per letter).
+     */
+    private void broadcastAnimaleseForWord(UUID speakerUuid, String word) {
+        SpeechState state = activeSpeech.get(speakerUuid);
+        if (state == null) return;
+        long gen = state.getGeneration();
+        World world = state.getWorld();
+
+        // Check server-wide animalese toggle
+        BubbleChatConfig cfg = getServerConfig();
+        if (cfg != null && !cfg.animaleseEnabled) return;
+
+        // Check speaker has animalese enabled
+        PlayerBubbleTheme theme = themeStorage != null ? themeStorage.getTheme(speakerUuid) : null;
+        if (theme == null || !theme.animalese) return;
+
+        int voiceType = Math.max(0, Math.min(7, theme.voiceType));
+        float basePitch = Math.max(0.5f, Math.min(2.0f, theme.pitch)) * 1.5f;
+
+        // Strip non-alpha characters
+        String letters = word.replaceAll("[^a-zA-Z]", "");
+        if (letters.isEmpty()) return;
+
+        // Yell words (ends with !) get the same pitch boost as all-caps
+        boolean yellWord = word.endsWith("!");
+
+        // Get speaker position for 3D audio
+        Vector3d speakerPos = state.getLastPosition();
+        if (speakerPos == null) return;
+
+        // Calculate per-letter interval (same formula as mouth anims)
+        long intervalMs = Math.max(50, Math.min(80, WORD_REVEAL_MS / Math.max(letters.length(), 1)));
+
+        // If yell word, boost the base pitch for all letters in this word
+        float wordPitch = yellWord ? basePitch * 1.2f : basePitch;
+
+        String speakerUuidStr = speakerUuid.toString();
+        String speakerLowerName = state.getSpeakerLowerName();
+
+        for (int i = 0; i < letters.length(); i++) {
+            final char ch = letters.charAt(i);
+
+            if (i == 0) {
+                playAnimaleseLetter(speakerUuid, speakerUuidStr, speakerLowerName, speakerPos, voiceType, wordPitch, ch);
+            } else {
+                long delay = (long) i * intervalMs;
+                scheduler.schedule(() -> {
+                    Long cg = generationCounters.get(speakerUuid);
+                    if (cg == null || cg.longValue() != gen) return;
+                    // Must run on world thread — playAnimaleseLetter uses store.getComponent
+                    // for cull distance checks, which asserts world thread
+                    world.execute(() -> {
+                        Long cg2 = generationCounters.get(speakerUuid);
+                        if (cg2 == null || cg2.longValue() != gen) return;
+                        SpeechState s = activeSpeech.get(speakerUuid);
+                        Vector3d pos = s != null ? s.getLastPosition() : speakerPos;
+                        playAnimaleseLetter(speakerUuid, speakerUuidStr, speakerLowerName, pos, voiceType, wordPitch, ch);
+                    });
+                }, delay, TimeUnit.MILLISECONDS);
+            }
+        }
+    }
+
+    /**
+     * Play a single Animalese letter sound to all qualifying viewers.
+     */
+    private void playAnimaleseLetter(UUID speakerUuid, String speakerUuidStr, String speakerLowerName,
+                                      Vector3d pos, int voiceType, float basePitch, char ch) {
+        int letterIdx = Character.toLowerCase(ch) - 'a';
+        if (letterIdx < 0 || letterIdx > 25) return;
+        int soundIdx = animaleseSoundIndices[voiceType][letterIdx];
+        if (soundIdx == 0) return;
+
+        // Pitch: base +/- 10%, uppercase gets +20% bump
+        float pitch = basePitch * (0.9f + ThreadLocalRandom.current().nextFloat() * 0.2f);
+        if (Character.isUpperCase(ch)) {
+            pitch *= 1.2f;
+        }
+
+        for (PlayerRef viewer : getViewers(speakerUuid, pos)) {
+            UUID viewerUuid = viewer.getUuid();
+            // Speaker doesn't hear own animalese — use Voice Settings preview instead
+            if (viewerUuid.equals(speakerUuid)) continue;
+
+            PlayerBubblePrefs viewerPrefs = prefsStorage != null ? prefsStorage.getPrefs(viewerUuid) : null;
+            if (viewerPrefs == null) continue;
+
+            if (viewerPrefs.isAnimaleseMuted(speakerLowerName)) continue;
+            float vol = viewerPrefs.getAnimaleseVolumeForSpeaker(speakerUuidStr) * 0.1f;
+            if (vol <= 0f) continue;
+
+            // Animalese cull distance check
+            int cullDist = viewerPrefs.getEffectiveAnimaleseCullDistance();
+            Ref<EntityStore> viewerRef = viewer.getReference();
+            if (viewerRef == null || !viewerRef.isValid()) continue;
+
+            Store<EntityStore> viewerStore = viewerRef.getStore();
+            TransformComponent vtc = viewerStore.getComponent(viewerRef, TransformComponent.getComponentType());
+            if (vtc != null && pos != null) {
+                double maxRangeSq = (double) cullDist * cullDist;
+                if (distSqXZ(vtc.getPosition(), pos) > maxRangeSq) continue;
+            }
+
+            try {
+                SoundUtil.playSoundEvent3dToPlayer(viewerRef, soundIdx, SoundCategory.SFX,
+                    pos.getX(), pos.getY(), pos.getZ(), vol, pitch, viewerStore);
+            } catch (Exception e) {
+                // Silently ignore — viewer may have disconnected
+            }
+        }
+    }
+
+    // ---- Mouth Animation System ----
 
     private void registerMouthAnims(UUID speakerUuid, Vector3d speakerPos) {
         UpdateItemPlayerAnimations packet = getMouthRegisterPacket();
@@ -2606,7 +2856,7 @@ public class SpeechManager {
                 long delay = i * intervalMs;
                 ScheduledFuture<?> f = scheduler.schedule(() -> {
                     Long cg = generationCounters.get(speakerUuid);
-                    if (cg == null || cg != gen) return;
+                    if (cg == null || cg.longValue() != gen) return;
                     broadcastMouthKey(speakerUuid, netId, key);
                 }, delay, TimeUnit.MILLISECONDS);
                 futures.add(f);
@@ -2617,7 +2867,7 @@ public class SpeechManager {
         long restDelay = keys.size() * intervalMs;
         ScheduledFuture<?> restFuture = scheduler.schedule(() -> {
             Long cg = generationCounters.get(speakerUuid);
-            if (cg == null || cg != gen) return;
+            if (cg == null || cg.longValue() != gen) return;
             broadcastMouthKey(speakerUuid, netId, "BC_Rest");
         }, restDelay, TimeUnit.MILLISECONDS);
         futures.add(restFuture);

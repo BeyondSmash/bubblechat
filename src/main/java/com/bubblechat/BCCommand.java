@@ -20,9 +20,11 @@ public class BCCommand extends AbstractPlayerCommand {
     private final BubbleThemeStorage themeStorage;
     private final PlayerBubblePrefsStorage prefsStorage;
     private final ChannelStorage channelStorage;
+    private final BubbleChatConfig serverConfig;
 
     public BCCommand(SpeechManager manager, BubbleThemeStorage themeStorage,
-                     PlayerBubblePrefsStorage prefsStorage, ChannelStorage channelStorage) {
+                     PlayerBubblePrefsStorage prefsStorage, ChannelStorage channelStorage,
+                     BubbleChatConfig serverConfig) {
         super("bchat", "Toggle speech bubbles");
         setPermissionGroup(null);
         setAllowsExtraArguments(true);
@@ -30,6 +32,7 @@ public class BCCommand extends AbstractPlayerCommand {
         this.themeStorage = themeStorage;
         this.prefsStorage = prefsStorage;
         this.channelStorage = channelStorage;
+        this.serverConfig = serverConfig;
     }
 
     @Override
@@ -73,6 +76,10 @@ public class BCCommand extends AbstractPlayerCommand {
             return;
         }
         if (trimmed.equalsIgnoreCase("ch")) {
+            if (serverConfig != null && !serverConfig.rpChannelsEnabled) {
+                context.sendMessage(Message.raw("RP channels are disabled on this server."));
+                return;
+            }
             openPage(store, ref, playerRef, "ch");
             return;
         }
@@ -80,6 +87,23 @@ public class BCCommand extends AbstractPlayerCommand {
             openPage(store, ref, playerRef, "hm");
             return;
         }
+        if (trimmed.equalsIgnoreCase("vc")) {
+            openPage(store, ref, playerRef, "vc");
+            return;
+        }
+        if (trimmed.toLowerCase().startsWith("vc ")) {
+            String vcArg = trimmed.substring(3).trim();
+            if (vcArg.equalsIgnoreCase("on") || vcArg.equalsIgnoreCase("off")) {
+                PlayerBubbleTheme theme = themeStorage.getTheme(uuid);
+                theme.animalese = vcArg.equalsIgnoreCase("on");
+                themeStorage.saveAsync(manager.getScheduler());
+                context.sendMessage(Message.raw("Animalese " + (theme.animalese ? "enabled" : "disabled") + "."));
+            } else {
+                context.sendMessage(Message.raw("Usage: /bchat vc on|off"));
+            }
+            return;
+        }
+
 
         if (trimmed.equalsIgnoreCase("status")) {
             boolean enabled = manager.isEnabled(uuid);
@@ -196,6 +220,8 @@ public class BCCommand extends AbstractPlayerCommand {
                 new ChannelsPage(manager, themeStorage, prefsStorage, playerRef, uuid));
             case "hm" -> player.getPageManager().openCustomPage(ref, store,
                 new HiddenMutedPage(manager, themeStorage, prefsStorage, playerRef, uuid));
+            case "vc" -> player.getPageManager().openCustomPage(ref, store,
+                new VoicePage(manager, themeStorage, prefsStorage, playerRef, uuid));
         }
     }
 
@@ -205,6 +231,8 @@ public class BCCommand extends AbstractPlayerCommand {
         context.sendMessage(Message.raw("/bchat pc - Player colors"));
         context.sendMessage(Message.raw("/bchat ch - Channels"));
         context.sendMessage(Message.raw("/bchat hm - Hidden & muted"));
+        context.sendMessage(Message.raw("/bchat vc - Voice settings"));
+        context.sendMessage(Message.raw("/bchat vc on|off - Toggle animalese"));
         context.sendMessage(Message.raw("/bchat toggle - Toggle on/off"));
         context.sendMessage(Message.raw("/bchat self on|off - Show/hide own bubble"));
         context.sendMessage(Message.raw("/bchat clear - Dismiss current bubble"));

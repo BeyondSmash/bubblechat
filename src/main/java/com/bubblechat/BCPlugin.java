@@ -26,13 +26,14 @@ public class BCPlugin extends JavaPlugin {
 
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
     private static final String PLUGIN_NAME = "BubbleChat";
-    private static final String VERSION = "1.1.0";
+    private static final String VERSION = "2.0.0";
     private static final long POLL_INTERVAL_MS = 20;
 
     private SpeechManager speechManager;
     private BubbleThemeStorage themeStorage;
     private PlayerBubblePrefsStorage prefsStorage;
     private ChannelStorage channelStorage;
+    private BubbleChatConfig serverConfig;
     private ScheduledExecutorService scheduler;
 
     public BCPlugin(@Nonnull JavaPluginInit init) {
@@ -53,10 +54,13 @@ public class BCPlugin extends JavaPlugin {
         channelStorage = new ChannelStorage(getDataDirectory());
         channelStorage.load();
 
+        serverConfig = BubbleChatConfig.load(getDataDirectory());
+
         speechManager = new SpeechManager();
         speechManager.setThemeStorage(themeStorage);
         speechManager.setPrefsStorage(prefsStorage);
         speechManager.setChannelStorage(channelStorage);
+        speechManager.setServerConfig(serverConfig);
 
         BubbleChatAPI.init(speechManager);
     }
@@ -75,7 +79,7 @@ public class BCPlugin extends JavaPlugin {
         speechManager.setScheduler(scheduler);
 
         // Register command
-        getCommandRegistry().registerCommand(new BCCommand(speechManager, themeStorage, prefsStorage, channelStorage));
+        getCommandRegistry().registerCommand(new BCCommand(speechManager, themeStorage, prefsStorage, channelStorage, serverConfig));
         LOGGER.atInfo().log("Registered /bchat command");
 
         // Send custom particle configs to players on join + restore persisted settings
@@ -147,6 +151,12 @@ public class BCPlugin extends JavaPlugin {
                     String prefix = null;
                     String strippedMessage = message;
                     int targetSlot = -1;
+
+                    if (!serverConfig.rpChannelsEnabled) {
+                        // RP channels disabled — skip prefix parsing, treat as public chat
+                        speechManager.onChat(sender, message);
+                        return event;
+                    }
 
                     if (lowerMsg.startsWith("rp1")) {
                         prefix = "rp"; targetSlot = 0;

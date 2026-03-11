@@ -61,11 +61,19 @@ public class PlayerBubblePrefs {
         "rp3", "#2d5a3d"
     ));
 
-    /** Max distance for yell bubble visibility. Default 50. */
-    public int yellBubbleRange = 50;
+    /** Max distance for yell bubble visibility. Default 30. */
+    public int yellBubbleRange = 30;
 
-    /** Max distance for yell particle visibility. Default 75. */
-    public int yellParticleRange = 75;
+    /** Max distance for yell particle visibility. Default 30. */
+    public int yellParticleRange = 30;
+
+    // Animalese viewer-side settings
+    public float animaleseVolume = 2.1f;            // 0.0-3.0 UI (actual = stored * 0.1, default 50%)
+    public int animaleseCullDistance = 5;           // 1-30 blocks
+    public Map<String, Float> animalesePlayerVolumes = new HashMap<>();  // UUID -> volume override
+
+    /** Permanently muted animalese players (lowercased names) — still see bubbles, just no audio */
+    public Set<String> animaleseMutedPlayers = new HashSet<>();
 
     // --- Helpers ---
 
@@ -81,6 +89,10 @@ public class PlayerBubblePrefs {
             return false;
         }
         return true;
+    }
+
+    public boolean isAnimaleseMuted(String lowerName) {
+        return animaleseMutedPlayers.contains(lowerName);
     }
 
     /**
@@ -111,6 +123,20 @@ public class PlayerBubblePrefs {
 
     public int getEffectiveYellParticleRange() {
         return Math.max(1, Math.min(yellParticleRange, 200));
+    }
+
+    /**
+     * Get effective animalese volume for a specific speaker.
+     * Per-player override takes priority over global volume.
+     */
+    public float getAnimaleseVolumeForSpeaker(String speakerUuidStr) {
+        Float override = animalesePlayerVolumes.get(speakerUuidStr);
+        if (override != null) return override;
+        return animaleseVolume;
+    }
+
+    public int getEffectiveAnimaleseCullDistance() {
+        return Math.max(1, Math.min(animaleseCullDistance, 30));
     }
 
     @Nullable

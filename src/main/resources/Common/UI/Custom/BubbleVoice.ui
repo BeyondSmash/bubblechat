@@ -1,0 +1,231 @@
+$C = "Common.ui";
+
+@ActiveOnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #2d5a2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #3a6a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1f4a1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@ActiveOffStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #5a2d2d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #6a3a3a)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #4a1f1f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@DimStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 14, TextColor: #808890, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1e2d3d)),
+  Hovered: (LabelStyle: (FontSize: 14, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #253545)),
+  Pressed: (LabelStyle: (FontSize: 14, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #18242f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@PreviewBtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 13, TextColor: #c0cdd8, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #2d4a5a)),
+  Hovered: (LabelStyle: (FontSize: 13, TextColor: #ddeeff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #3a5a6a)),
+  Pressed: (LabelStyle: (FontSize: 13, TextColor: #99aabb, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1f3a4a)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@PreviewPresetStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 12, TextColor: #808890, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1e2d3d)),
+  Hovered: (LabelStyle: (FontSize: 12, TextColor: #c0cdd8, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #253545)),
+  Pressed: (LabelStyle: (FontSize: 12, TextColor: #99aabb, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #18242f)),
+  Sounds: $C.@ButtonSounds,
+);
+
+@NavBtnStyle = TextButtonStyle(
+  Default: (LabelStyle: (FontSize: 13, TextColor: #c0b060, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #2a3848)),
+  Hovered: (LabelStyle: (FontSize: 13, TextColor: #e0d080, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #354858)),
+  Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1f2e3e)),
+  Sounds: $C.@ButtonSounds,
+);
+
+$C.@PageOverlay {
+  $C.@DecoratedContainer {
+    Anchor: (Width: 520, Height: 470);
+
+    #Title {
+      Group {
+        TextButton #BackButton {
+          Anchor: (Left: 12, Top: 4, Width: 44, Height: 24);
+          Text: "Back";
+          Style: TextButtonStyle(
+            Default: (LabelStyle: (FontSize: 14, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+            Hovered: (LabelStyle: (FontSize: 14, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+            Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+            Sounds: $C.@ButtonSounds,
+          );
+        }
+
+        Label #TitleLabel {
+          Anchor: (Height: 28, Horizontal: 0);
+          Style: (FontSize: 20, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center);
+          Text: "VOICE SETTINGS";
+        }
+
+        TextButton #ResetButton {
+          Anchor: (Right: 12, Top: 4, Width: 54, Height: 24);
+          Text: "Reset";
+          Style: TextButtonStyle(
+            Default: (LabelStyle: (FontSize: 14, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
+            Hovered: (LabelStyle: (FontSize: 14, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
+            Pressed: (LabelStyle: (FontSize: 14, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+            Sounds: $C.@ButtonSounds,
+          );
+        }
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+
+      // === Animalese Toggle (Speaker) ===
+      Group #AnimaleseRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Animalese"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Enable voice sounds when you chat"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #AnimaleseOn { Anchor: (Width: 50, Height: 26); Text: "ON"; Style: @ActiveOnStyle; }
+        }
+        Label { Anchor: (Width: 4); }
+        Group { Anchor: (Width: 50, Height: 26);
+          TextButton #AnimaleseOff { Anchor: (Width: 50, Height: 26); Text: "OFF"; Style: @ActiveOffStyle; }
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Voice Type (Speaker) ===
+      Group #VoiceRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Voice Type"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Your voice style others hear"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #VoiceDropdown {
+          Anchor: (Width: 180, Height: 20);
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Pitch (Speaker) ===
+      Group #PitchRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Pitch"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Base pitch of your voice (0.5 = low, 2.0 = high)"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #PitchDropdown {
+          Anchor: (Width: 80, Height: 20);
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+      Label { Text: "VIEWER SETTINGS"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, HorizontalAlignment: Center); Padding: (Top: 8, Bottom: 4); }
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Volume (Viewer) ===
+      Group #VolumeRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Volume"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "How loud you hear others' voices"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #VolumeDropdown {
+          Anchor: (Width: 100, Height: 20);
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Audio Range (Viewer) ===
+      Group #CullRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 8, Left: 14, Right: 14);
+        Label { Text: "Audio Range"; Style: (FontSize: 16, RenderBold: true, TextColor: #93844c, VerticalAlignment: Center); TooltipText: "Max distance to hear voice sounds"; TextTooltipStyle: $C.@DefaultTextTooltipStyle; }
+        Label { FlexWeight: 1; }
+        $C.@DropdownBox #CullDropdown {
+          Anchor: (Width: 130, Height: 20);
+        }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Preview Section ===
+      Label { Text: "PREVIEW"; Style: (FontSize: 13, RenderBold: true, TextColor: #808890, HorizontalAlignment: Center); Padding: (Top: 8, Bottom: 4); }
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      Group #PreviewRow {
+        LayoutMode: Left;
+        Padding: (Top: 8, Bottom: 4, Left: 14, Right: 14);
+        TextField #PreviewInput {
+          Anchor: (Height: 28);
+          FlexWeight: 1;
+          Style: (FontSize: 14, TextColor: #a5b4c4);
+          Padding: (Left: 8);
+          Background: #0d1520;
+          PlaceholderText: "Type preview text...";
+          PlaceholderStyle: (TextColor: #4a5560, RenderItalics: true);
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #PreviewBtn {
+          Anchor: (Width: 70, Height: 28);
+          Text: "Preview";
+          Style: @PreviewBtnStyle;
+        }
+      }
+
+      Group #PresetRow {
+        LayoutMode: Left;
+        Padding: (Top: 2, Bottom: 8, Left: 14, Right: 14);
+        Label { FlexWeight: 1; }
+        TextButton #PreviewHello {
+          Anchor: (Width: 70, Height: 24);
+          Text: "Hello!";
+          Style: @PreviewPresetStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #PreviewNice {
+          Anchor: (Width: 120, Height: 24);
+          Text: "Nice to meet you!";
+          Style: @PreviewPresetStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #PreviewLong {
+          Anchor: (Width: 160, Height: 24);
+          Text: "How are you doing today?";
+          Style: @PreviewPresetStyle;
+        }
+        Label { FlexWeight: 1; }
+      }
+
+      Group { Anchor: (Height: 1); Background: #282b2a; }
+
+      // === Navigation Row ===
+      Group #NavRow {
+        LayoutMode: Left;
+        Padding: (Top: 10, Bottom: 8, Left: 14, Right: 14);
+        Label { FlexWeight: 1; }
+        TextButton #NavPlayerColors {
+          Anchor: (Width: 120, Height: 28);
+          Text: "Player Colors";
+          Style: @NavBtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #NavChannels {
+          Anchor: (Width: 90, Height: 28);
+          Text: "Channels";
+          Style: @NavBtnStyle;
+        }
+        Label { Anchor: (Width: 6); }
+        TextButton #NavHiddenMuted {
+          Anchor: (Width: 120, Height: 28);
+          Text: "Hidden & Muted";
+          Style: @NavBtnStyle;
+        }
+        Label { FlexWeight: 1; }
+      }
+    }
+  }
+}

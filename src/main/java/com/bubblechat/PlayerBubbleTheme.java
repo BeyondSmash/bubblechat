@@ -13,6 +13,11 @@ public class PlayerBubbleTheme {
 
     public boolean selfVisible = false;
 
+    // Animalese voice settings (speaker-side)
+    public boolean animalese = true;       // on by default
+    public int voiceType = 5;              // 0-7 (Voice 6 - Mellow)
+    public float pitch = 1.0f;            // UI pitch 0.5-2.0 (actual = stored * 1.5)
+
     /**
      * Parse tintColorHex into a protocol Color for ModelParticle override.
      * Returns null if no custom color is set (use spawner default).

@@ -177,6 +177,14 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
                     }
                     return;
                 }
+                case "GoVoice" -> {
+                    Player player4 = store.getComponent(ref, Player.getComponentType());
+                    if (player4 != null) {
+                        player4.getPageManager().openCustomPage(ref, store,
+                            new VoicePage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
+                    return;
+                }
             }
             refresh();
             return;
@@ -306,6 +314,8 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
             new EventData().append("Action", "GoChannels"), false);
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavHiddenMuted",
             new EventData().append("Action", "GoHiddenMuted"), false);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavVoice",
+            new EventData().append("Action", "GoVoice"), false);
 
         // Undo/Redo/Back/Reset
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#UndoButton",
@@ -425,6 +435,15 @@ public class BubbleThemePage extends InteractiveCustomUIPage<BubbleThemePage.Pag
 
         // Visemes toggle visibility
         setToggleVisibility(cmd, "#VisOnA", "#VisOnD", "#VisOffA", "#VisOffD", prefs.visemesEnabled);
+
+        // Hide nav buttons based on server config
+        BubbleChatConfig cfg = manager.getServerConfig();
+        if (cfg != null && !cfg.rpChannelsEnabled) {
+            cmd.set("#NavChannels.Visible", false);
+        }
+        if (cfg != null && !cfg.animaleseEnabled) {
+            cmd.set("#NavVoice.Visible", false);
+        }
 
         // Undo + Redo
         cmd.set("#UndoButton.Visible", !undoStack.isEmpty());

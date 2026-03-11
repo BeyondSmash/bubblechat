@@ -46,7 +46,9 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
     public void build(@Nonnull Ref<EntityStore> ref, @Nonnull UICommandBuilder cmd,
                       @Nonnull UIEventBuilder evt, @Nonnull Store<EntityStore> store) {
         cmd.append("PlayerColors.ui");
-        applySettings(cmd, evt);
+        applyValues(cmd);
+        registerEvents(evt);
+        buildList(cmd, evt);
     }
 
     @Override
@@ -96,6 +98,14 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
                     }
                     return;
                 }
+                case "GoVoice" -> {
+                    Player player4 = store.getComponent(ref, Player.getComponentType());
+                    if (player4 != null) {
+                        player4.getPageManager().openCustomPage(ref, store,
+                            new VoicePage(manager, themeStorage, prefsStorage, playerRef, playerUuid));
+                    }
+                    return;
+                }
                 case "SetGlobal" -> {
                     prefs.globalColorOverride = currentPickerHex;
                     prefsStorage.saveAsync(playerUuid, manager.getScheduler());
@@ -134,20 +144,22 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
         }
     }
 
+    /** Refresh values only — static events are registered once in build(). */
     private void refresh() {
         UICommandBuilder cmd = new UICommandBuilder();
         UIEventBuilder evt = new UIEventBuilder();
-        applySettings(cmd, evt);
+        applyValues(cmd);
+        // Dynamic list entries need fresh event bindings (elements are rebuilt)
+        buildList(cmd, evt);
         sendUpdate(cmd, evt, false);
     }
 
-    private void applySettings(@Nonnull UICommandBuilder cmd, @Nonnull UIEventBuilder evt) {
+    /** Set current UI values (called from build + refresh). */
+    private void applyValues(@Nonnull UICommandBuilder cmd) {
         PlayerBubblePrefs prefs = prefsStorage.getPrefs(playerUuid);
 
         // Color picker
         cmd.set("#ColorPicker.Value", currentPickerHex);
-        evt.addEventBinding(CustomUIEventBindingType.ValueChanged, "#ColorPicker",
-            EventData.of("DropdownId", "Color").append("@DropdownValue", "#ColorPicker.Value"), false);
 
         // Hex display
         cmd.set("#HexField.Value", currentPickerHex.toUpperCase());
@@ -164,6 +176,19 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
 
         // Sync input field with server state (clears after Add)
         cmd.set("#NameInput.Value", inputField);
+
+        // Hide Voice button if animalese disabled by server config
+        BubbleChatConfig cfg = manager.getServerConfig();
+        if (cfg != null && !cfg.animaleseEnabled) {
+            cmd.set("#NavVoice.Visible", false);
+        }
+    }
+
+    /** Register static event bindings once in build() — never re-sent on refresh. */
+    private void registerEvents(@Nonnull UIEventBuilder evt) {
+        // Color picker
+        evt.addEventBinding(CustomUIEventBindingType.ValueChanged, "#ColorPicker",
+            EventData.of("DropdownId", "Color").append("@DropdownValue", "#ColorPicker.Value"), false);
 
         // Input field + buttons
         evt.addEventBinding(CustomUIEventBindingType.ValueChanged, "#NameInput",
@@ -182,8 +207,8 @@ public class PlayerColorsPage extends InteractiveCustomUIPage<PlayerColorsPage.P
             new EventData().append("Action", "GoChannels"), false);
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavHiddenMuted",
             new EventData().append("Action", "GoHiddenMuted"), false);
-
-        buildList(cmd, evt);
+        evt.addEventBinding(CustomUIEventBindingType.Activating, "#NavVoice",
+            new EventData().append("Action", "GoVoice"), false);
     }
 
     private void buildList(@Nonnull UICommandBuilder cmd, @Nonnull UIEventBuilder evt) {

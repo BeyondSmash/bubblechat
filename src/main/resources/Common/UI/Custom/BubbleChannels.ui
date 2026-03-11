@@ -22,9 +22,9 @@ $C = "Common.ui";
 );
 
 @NavBtnStyle = TextButtonStyle(
-  Default: (LabelStyle: (FontSize: 13, TextColor: #93844c, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1a2533)),
-  Hovered: (LabelStyle: (FontSize: 13, TextColor: #b8a960, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #22303f)),
-  Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #152030)),
+  Default: (LabelStyle: (FontSize: 13, TextColor: #c0b060, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #2a3848)),
+  Hovered: (LabelStyle: (FontSize: 13, TextColor: #e0d080, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #354858)),
+  Pressed: (LabelStyle: (FontSize: 13, TextColor: #ffe082, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center), Background: (Color: #1f2e3e)),
   Sounds: $C.@ButtonSounds,
 );
 
@@ -348,20 +348,20 @@ $C.@PageOverlay {
         Padding: (Top: 10, Bottom: 8, Left: 14, Right: 14);
         Label { FlexWeight: 1; }
         TextButton #NavPlayerColors {
-          Anchor: (Width: 130, Height: 28);
+          Anchor: (Width: 120, Height: 28);
           Text: "Player Colors";
           Style: @NavBtnStyle;
         }
         Label { Anchor: (Width: 6); }
-        TextButton #NavChannels {
-          Anchor: (Width: 100, Height: 28);
-          Text: "Channels";
+        TextButton #NavHiddenMuted {
+          Anchor: (Width: 120, Height: 28);
+          Text: "Hidden & Muted";
           Style: @NavBtnStyle;
         }
         Label { Anchor: (Width: 6); }
-        TextButton #NavHiddenMuted {
-          Anchor: (Width: 130, Height: 28);
-          Text: "Hidden & Muted";
+        TextButton #NavVoice {
+          Anchor: (Width: 70, Height: 28);
+          Text: "Voice";
           Style: @NavBtnStyle;
         }
         Label { FlexWeight: 1; }
