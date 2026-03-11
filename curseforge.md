@@ -29,6 +29,17 @@ Custom phoneme-based lip-sync animations play on the player model while the bubb
 
 The mouth animation system uses a custom sprite sheet with 16 phoneme positions (Rest, A, O, E/I/U/Y, S/T/D, N, L, R, F/V, H, W, J, K/G, B, M, P) animated via `blockyanim` files. Each position is registered as its own animation group so transitions between mouth shapes are smooth and immediate.
 
+### Animalese Voice
+
+A charming Animal Crossing-inspired voice synthesis system that plays alongside speech bubbles:
+
+*   **Phoneme-mapped audio** — each letter triggers a pitched instrument note based on its phoneme group, creating a unique "voice" per message
+*   **8 voice types** — randomly assigned per player session, each with a distinct pitch range
+*   **Per-player volume control** — adjustable from 0% to 200% (default 100%)
+*   **Proximity-based falloff** — volume decreases naturally with distance from the speaker
+*   **Per-player mute** — mute individual players' animalese audio without hiding their bubbles
+*   **Global toggle** — enable or disable animalese entirely from the Voice Settings page
+
 ### Yell Effect
 
 When a message contains ALL CAPS words (2+ letters) or words ending with `!`, a scream particle effect plays alongside the bubble for emphasis.
@@ -67,6 +78,7 @@ Private roleplay channels for in-character chat that only channel members can se
 *   **Self-visible toggle** — show or hide your own speech bubble
 *   **Hide players** — permanently hide bubbles from specific players
 *   **Mute players** — temporarily mute with preset durations (5 min to 24 hours, auto-expires)
+*   **Animalese mute** — mute specific players' voice audio while still seeing their bubbles
 *   **Cull distance** — adjustable from 10M to 200M (default 20M)
 *   **Max bubble count** — limit simultaneous bubbles from 1 to 50 (default 10)
 
@@ -74,7 +86,7 @@ Private roleplay channels for in-character chat that only channel members can se
 
 ## Settings GUI
 
-Open with `/bchat` or `/bchat theme` for the full settings page:
+Open with `/bchat` for the full settings page:
 
 *   **Enable** — On/Off toggle for speech bubbles
 *   **Mode** — Light/Dark toggle
@@ -85,7 +97,8 @@ Open with `/bchat` or `/bchat theme` for the full settings page:
 *   **Expressions** — On/Off toggle for mouth animations
 *   **Player Colors** — Sub-page for global and per-player color overrides
 *   **Channels** — Sub-page for RP channel management, dual visibility, cull distances, and yell ranges
-*   **Hidden & Muted** — Sub-page for managing hidden and muted players
+*   **Hidden & Muted** — Sub-page for managing hidden, muted, and animalese-muted players
+*   **Voice** — Sub-page for animalese toggle, volume, and preview
 *   **Reset All** — Restore all settings to defaults
 *   **Undo / Redo** — Full action history (up to 50 steps)
 
@@ -105,6 +118,8 @@ Open with `/bchat` or `/bchat theme` for the full settings page:
 | <code>/bchat pc</code>                              | Open Player Colors page             |
 | <code>/bchat ch</code>                              | Open Channels page                  |
 | <code>/bchat hm</code>                              | Open Hidden & Muted page            |
+| <code>/bchat vc</code>                              | Open Voice Settings page            |
+| <code>/bchat vc on\|off</code>                      | Toggle animalese on/off             |
 | <code>/bchat status</code>                          | Show current settings               |
 | <code>/bchat help</code>                            | Show command list                   |
 
@@ -127,7 +142,7 @@ Open with `/bchat` or `/bchat theme` for the full settings page:
 
 ## Installation
 
-1.  Drop `BubbleChat-1.1.0.jar` into your `Mods` folder
+1.  Drop `BubbleChat-1.5.0.jar` into your `Mods` folder
 2.  No configuration needed — all settings are per-player via the in-game GUI
 
 ***
@@ -146,6 +161,14 @@ When joining a server with BubbleChat, you may see 2 `[AssetUpdate]` log message
 **This is a Hytale client behavior, not a bug.** The client logs these messages whenever a plugin sends custom particle definitions after the initial load phase. BubbleChat needs to send its custom bubble particle configs to your client so the speech bubbles can render — there is no way to suppress these messages from the server side.
 
 We've already minimized this from 11 messages down to 2 by batching all particle configs into a single packet. The remaining 2 messages are the minimum achievable without Hytale client changes. This will likely be resolved in a future Hytale update as the game matures past Early Access.
+
+### Head rotation animation
+
+Currently, BubbleChat cannot add a subtle "talking" head bob animation while a player speaks. Hytale's animation system uses a Face slot that completely overrides camera-driven head rotation — there is no additive blending mode to layer a small animation on top. This will be revisited if Hytale adds animation blending support in a future update.
+
+### Voice chat proximity indicator
+
+There is no server-side API to detect whether a player is in a Hytale voice chat. The native voice system is handled entirely by the C# client. A "voice active" indicator above players would require client-side API access that doesn't currently exist.
 
 ### Font customization
 
