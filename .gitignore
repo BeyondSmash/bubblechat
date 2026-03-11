@@ -26,3 +26,6 @@ tools/
 
 # Internal docs
 docs/
+
+# CurseForge description (local only, README is the canonical copy)
+curseforge.md
