@@ -143,7 +143,25 @@ Open with `/bchat` for the full settings page:
 ## Installation
 
 1.  Drop `BubbleChat-1.5.0.jar` into your `Mods` folder
-2.  No configuration needed — all settings are per-player via the in-game GUI
+2.  All player settings are per-player via the in-game GUI — no setup required
+
+### Server Configuration (Optional)
+
+On first run, BubbleChat creates a `bubblechat-config.json` in the plugin data directory (`Saves/<WorldName>/plugindata/BeyondSmash/BubbleChat/`). Server hosts can edit this to customize server-wide defaults:
+
+```json
+{
+  "defaultBubbleColor": null,
+  "rpChannelsEnabled": true,
+  "animaleseEnabled": true
+}
+```
+
+| Setting              | Description                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| `defaultBubbleColor` | Default bubble tint for players who haven't chosen their own (`"#RRGGBB"` or `null` for no tint) |
+| `rpChannelsEnabled`  | Enable or disable RP/private channels server-wide                                                 |
+| `animaleseEnabled`   | Enable or disable animalese voice sounds server-wide                                              |
 
 ***
 
