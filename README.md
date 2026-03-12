@@ -142,7 +142,7 @@ Open with `/bchat` for the full settings page:
 
 ## Installation
 
-1.  Drop `BubbleChat-1.5.0.jar` into your `Mods` folder
+1.  Drop `BubbleChat-1.5.2.jar` into your `Mods` folder
 2.  All player settings are per-player via the in-game GUI — no setup required
 
 ### Server Configuration (Optional)
@@ -196,6 +196,28 @@ My hope is that Hypixel adds more support for Nameplate customization (text colo
 
 ***
 
+## Troubleshooting
+
+### Players unable to join the server
+
+If some players can't connect and you see texture-related warnings in the server log like:
+
+```
+Texture dimensions are not multiples of 32: SomePlugin/SomeIcon.png (140x140)
+```
+
+This is caused by another plugin on the server having improperly sized textures (PNGs that aren't multiples of 32x32). BubbleChat sends custom particle definitions to each client on connect, which triggers the Hytale client to re-validate all particle textures server-wide — surfacing errors from other plugins that would otherwise go unnoticed.
+
+**Fix:** Check the warning messages for which textures are flagged — they'll belong to another plugin. Resize those PNGs to multiples of 32x32 (minimum 32x32) and the join issue will resolve.
+
+### Texture warnings from vanilla assets
+
+You may also see warnings for Hytale's own thought bubble textures (`AppleThought.png`, `PotatoThought.png`, etc.) which are 140x140 — Hypixel's own assets failing their own validation. These are harmless and can be ignored.
+
+This happens because the Hytale client re-validates *all* particle textures server-wide whenever any plugin sends custom particle definitions, rather than only validating the textures referenced in that specific update. Ideally, Hytale would fix the vanilla texture sizes and scope the re-validation to only the assets being updated — which would also eliminate the `[AssetUpdate]` log messages on connect.
+
+***
+
 ## API — Plugin Integration
 
 Other plugins can trigger speech bubbles programmatically using the BubbleChat API.
@@ -239,3 +261,4 @@ Bubbles triggered via the API use the speaker's own theme settings (color, light
 *   **WalnutOwl** — Testing & feedback
 *   **Joey475574** — Testing & feedback
 *   **AZB** — Testing & feedback
+*   **Jalatxe** — Testing & feedback

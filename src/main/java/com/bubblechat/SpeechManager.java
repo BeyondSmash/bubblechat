@@ -1140,13 +1140,18 @@ public class SpeechManager {
                     }
                 }
 
-                Store<EntityStore> viewerStore = ref.getStore();
-                TransformComponent vtc = viewerStore.getComponent(ref, TransformComponent.getComponentType());
-                if (vtc != null) {
-                    Vector3d vp = vtc.getPosition();
-                    double dx = vp.getX() - speakerPos.getX();
-                    double dz = vp.getZ() - speakerPos.getZ();
-                    if (dx * dx + dz * dz > maxRangeSq) continue;
+                try {
+                    Store<EntityStore> viewerStore = ref.getStore();
+                    TransformComponent vtc = viewerStore.getComponent(ref, TransformComponent.getComponentType());
+                    if (vtc != null) {
+                        Vector3d vp = vtc.getPosition();
+                        double dx = vp.getX() - speakerPos.getX();
+                        double dz = vp.getZ() - speakerPos.getZ();
+                        if (dx * dx + dz * dz > maxRangeSq) continue;
+                    }
+                } catch (IllegalStateException e) {
+                    // Cross-world thread mismatch (viewer moved worlds during iteration) — skip
+                    continue;
                 }
             }
 
@@ -2062,6 +2067,15 @@ public class SpeechManager {
                     // getViewers() accesses components — must run on world thread
                     world.execute(() -> {
                         try {
+                            // Verify speaker hasn't moved worlds since chat started
+                            PlayerRef fr = findPlayerRef(uuid);
+                            if (fr != null) {
+                                Ref<EntityStore> cr = fr.getReference();
+                                if (cr != null && cr.isValid()
+                                        && cr.getStore().getExternalData().getWorld() != world) {
+                                    return; // Stale world — skip fade
+                                }
+                            }
                             sendFadeParticle(uuid, playerNetId, s.getTileCount(), s.getLineCount());
                         } catch (Exception e) {
                             LOGGER.at(java.util.logging.Level.WARNING).log("Fade particle error: " + e.getMessage());
@@ -2354,6 +2368,18 @@ public class SpeechManager {
                 SpeechState s = activeSpeech.get(uuid);
                 if (s == null) return;
 
+                // Verify speaker hasn't moved to a different world instance (e.g. dungeon portal)
+                // since we captured the world reference. If they did, this lambda is running on the
+                // wrong thread — getViewers() would access instance stores from the default thread.
+                PlayerRef freshRef = findPlayerRef(uuid);
+                if (freshRef == null) { clearSpeech(uuid); return; }
+                Ref<EntityStore> currentRef = freshRef.getReference();
+                if (currentRef == null || !currentRef.isValid()) { clearSpeech(uuid); return; }
+                if (currentRef.getStore().getExternalData().getWorld() != world) {
+                    clearSpeech(uuid);
+                    return;
+                }
+
                 DeathComponent deathComp = store.getComponent(ref, DeathComponent.getComponentType());
                 if (deathComp != null) {
                     clearSpeech(uuid);
@@ -2577,8 +2603,14 @@ public class SpeechManager {
         SpeechState state = activeSpeech.get(speakerUuid);
         String channelPin = state != null ? state.getChannelPin() : null;
 
+        // Skip viewers in different world instances (store.getComponent asserts same thread)
+        UUID speakerWorldUuid = playerRef.getWorldUuid();
+
         for (PlayerRef viewer : Universe.get().getPlayers()) {
             if (viewer.getUuid().equals(speakerUuid) && !selfVisiblePlayers.contains(speakerUuid)) continue;
+
+            // Skip viewers in different world instances (e.g. dungeon portals)
+            if (speakerWorldUuid != null && !speakerWorldUuid.equals(viewer.getWorldUuid())) continue;
 
             // Channel isolation
             if (channelPin != null && channelStorage != null) {
