@@ -2859,6 +2859,10 @@ public class SpeechManager {
         // Cancel any pending letter animations from the previous word
         cancelPendingMouthAnims(speakerUuid);
 
+        // Brief rest between words (close mouth during the space)
+        broadcastMouthKey(speakerUuid, netId, "BC_Rest");
+        long restGap = 60; // ms of closed mouth between words
+
         // Strip non-alpha characters for mouth animation
         String letters = word.replaceAll("[^a-zA-Z]", "");
         if (letters.isEmpty()) return;
@@ -2877,26 +2881,22 @@ public class SpeechManager {
         // Calculate per-letter interval: fit within WORD_REVEAL_MS, min 50ms, max 80ms
         long intervalMs = Math.max(50, Math.min(80, WORD_REVEAL_MS / Math.max(keys.size(), 1)));
 
-        // Schedule each letter's mouth position
+        // Schedule each letter's mouth position (offset by restGap for the between-word pause)
         List<ScheduledFuture<?>> futures = new ArrayList<>();
         for (int i = 0; i < keys.size(); i++) {
             final String key = keys.get(i);
-            if (i == 0) {
-                // First letter: send immediately
+            long delay = restGap + i * intervalMs;
+            ScheduledFuture<?> f = scheduler.schedule(() -> {
+                Long cg = generationCounters.get(speakerUuid);
+                if (cg == null || cg.longValue() != gen) return;
                 broadcastMouthKey(speakerUuid, netId, key);
-            } else {
-                long delay = i * intervalMs;
-                ScheduledFuture<?> f = scheduler.schedule(() -> {
-                    Long cg = generationCounters.get(speakerUuid);
-                    if (cg == null || cg.longValue() != gen) return;
-                    broadcastMouthKey(speakerUuid, netId, key);
-                }, delay, TimeUnit.MILLISECONDS);
-                futures.add(f);
-            }
+            }, delay, TimeUnit.MILLISECONDS);
+            futures.add(f);
         }
 
         // Close mouth after all letters complete (cancelled by next word if not the last)
-        long restDelay = keys.size() * intervalMs;
+        // Use full letter count so repeated letters (e.g. "rrrrr") hold the expression
+        long restDelay = restGap + letters.length() * intervalMs;
         ScheduledFuture<?> restFuture = scheduler.schedule(() -> {
             Long cg = generationCounters.get(speakerUuid);
             if (cg == null || cg.longValue() != gen) return;
