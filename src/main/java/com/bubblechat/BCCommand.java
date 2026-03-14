@@ -122,6 +122,7 @@ public class BCCommand extends AbstractPlayerCommand {
             return;
         }
 
+
         if (trimmed.equalsIgnoreCase("toggle")) {
             boolean nowEnabled = manager.togglePlayer(uuid);
             context.sendMessage(Message.raw(

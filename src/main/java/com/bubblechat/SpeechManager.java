@@ -18,6 +18,8 @@ import com.hypixel.hytale.protocol.ParticleAnimationFrame;
 import com.hypixel.hytale.protocol.Rangef;
 import com.hypixel.hytale.protocol.RangeVector2f;
 import com.hypixel.hytale.protocol.Size;
+import com.hypixel.hytale.protocol.MountController;
+import com.hypixel.hytale.protocol.MountedUpdate;
 import com.hypixel.hytale.protocol.TransformUpdate;
 import com.hypixel.hytale.protocol.EmitShape;
 import com.hypixel.hytale.protocol.FXRenderMode;
@@ -1482,11 +1484,11 @@ public class SpeechManager {
                 Vector3d pos2 = new Vector3d(pos.getX(), baseY + LINE2_NUDGE_3L, pos.getZ());
                 Vector3d pos3 = new Vector3d(pos.getX(), baseY - LINE_GAP + LINE3_NUDGE_3L, pos.getZ());
 
-                spawnVirtualEntity(netId1, pos1, words[0], uuid, pos, store);
-                spawnVirtualEntity(netId2, pos2, "", uuid, pos, store);
-                spawnVirtualEntity(netId3, pos3, "", uuid, pos, store);
-
                 int playerNetId = state.getPlayerNetworkId();
+                spawnVirtualEntity(netId1, pos1, words[0], uuid, pos, playerNetId, store);
+                spawnVirtualEntity(netId2, pos2, "", uuid, pos, playerNetId, store);
+                spawnVirtualEntity(netId3, pos3, "", uuid, pos, playerNetId, store);
+
                 if (playerNetId >= 0) {
                     try { sendBubbleParticle(uuid, playerNetId, state.getTileCount(), 3); }
                     catch (Exception e) { LOGGER.at(java.util.logging.Level.WARNING).log("Initial bubble send error: " + e.getMessage()); }
@@ -1503,10 +1505,10 @@ public class SpeechManager {
                 Vector3d pos1 = new Vector3d(pos.getX(), baseY + LINE_GAP / 2.0 + LINE1_NUDGE, pos.getZ());
                 Vector3d pos2 = new Vector3d(pos.getX(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, pos.getZ());
 
-                spawnVirtualEntity(netId1, pos1, words[0], uuid, pos, store);
-                spawnVirtualEntity(netId2, pos2, "", uuid, pos, store);
-
                 int playerNetId = state.getPlayerNetworkId();
+                spawnVirtualEntity(netId1, pos1, words[0], uuid, pos, playerNetId, store);
+                spawnVirtualEntity(netId2, pos2, "", uuid, pos, playerNetId, store);
+
                 if (playerNetId >= 0) {
                     try { sendBubbleParticle(uuid, playerNetId, state.getTileCount(), 2); }
                     catch (Exception e) { LOGGER.at(java.util.logging.Level.WARNING).log("Initial bubble send error: " + e.getMessage()); }
@@ -1517,10 +1519,10 @@ public class SpeechManager {
                 state.setVirtualEntityNetId(netId);
 
                 String initialText = words[0];
-                Vector3d bubblePos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(1), pos.getZ());
-                spawnVirtualEntity(netId, bubblePos, initialText, uuid, pos, store);
-
                 int playerNetId = state.getPlayerNetworkId();
+                Vector3d bubblePos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(1), pos.getZ());
+                spawnVirtualEntity(netId, bubblePos, initialText, uuid, pos, playerNetId, store);
+
                 if (playerNetId >= 0) {
                     try { sendBubbleParticle(uuid, playerNetId, state.getTileCount()); }
                     catch (Exception e) { LOGGER.at(java.util.logging.Level.WARNING).log("Initial bubble send error: " + e.getMessage()); }
@@ -1533,7 +1535,7 @@ public class SpeechManager {
                 state.setPageIndicatorNetId(piNetId);
                 int lc = state.getLineCount();
                 Vector3d piPos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(lc) + getPageIndicatorYOffset(lc), pos.getZ());
-                spawnVirtualEntity(piNetId, piPos, superscriptPage(state.getCurrentPage()), uuid, pos, store);
+                spawnVirtualEntity(piNetId, piPos, superscriptPage(state.getCurrentPage()), uuid, pos, state.getPlayerNetworkId(), store);
             }
 
             scheduleParticleLoop(uuid, gen);
@@ -1555,7 +1557,7 @@ public class SpeechManager {
     // ---- Virtual entity spawn ----
     @SuppressWarnings("removal")
     private void spawnVirtualEntity(int netId, Vector3d position, String text,
-                                     UUID speakerUuid, Vector3d speakerPos,
+                                     UUID speakerUuid, Vector3d speakerPos, int playerNetId,
                                      Store<EntityStore> store) {
         IntangibleUpdate intangibleUpdate = new IntangibleUpdate();
         NameplateUpdate nameplateUpdate = new NameplateUpdate(text);
@@ -1575,8 +1577,21 @@ public class SpeechManager {
         mt.lookOrientation = PositionUtil.toDirectionPacket(new Vector3f(0, 0, 0));
         TransformUpdate transformUpdate = new TransformUpdate(mt);
 
-        EntityUpdate entityUpdate = new EntityUpdate(netId, null,
-                new ComponentUpdate[]{intangibleUpdate, nameplateUpdate, modelUpdate, transformUpdate});
+        // Attach virtual entity to player for client-side frame-rate position tracking
+        MountedUpdate mountedUpdate = playerNetId >= 0
+            ? new MountedUpdate(playerNetId,
+                new com.hypixel.hytale.protocol.Vector3f(
+                    (float)(position.getX() - speakerPos.getX()),
+                    (float)(position.getY() - speakerPos.getY()),
+                    (float)(position.getZ() - speakerPos.getZ())),
+                MountController.Minecart, null)
+            : null;
+
+        ComponentUpdate[] components = mountedUpdate != null
+            ? new ComponentUpdate[]{intangibleUpdate, nameplateUpdate, modelUpdate, transformUpdate, mountedUpdate}
+            : new ComponentUpdate[]{intangibleUpdate, nameplateUpdate, modelUpdate, transformUpdate};
+
+        EntityUpdate entityUpdate = new EntityUpdate(netId, null, components);
         EntityUpdates spawnPacket = new EntityUpdates(null, new EntityUpdate[]{entityUpdate});
 
         for (PlayerRef viewer : getViewers(speakerUuid, speakerPos)) {
@@ -1951,9 +1966,9 @@ public class SpeechManager {
                     Vector3d pos2 = new Vector3d(pos.getX(), baseY + LINE2_NUDGE_3L, pos.getZ());
                     Vector3d pos3 = new Vector3d(pos.getX(), baseY - LINE_GAP + LINE3_NUDGE_3L, pos.getZ());
 
-                    spawnVirtualEntity(newNet1, pos1, initText, uuid, pos, store);
-                    spawnVirtualEntity(newNet2, pos2, "", uuid, pos, store);
-                    spawnVirtualEntity(newNet3, pos3, "", uuid, pos, store);
+                    spawnVirtualEntity(newNet1, pos1, initText, uuid, pos, s.getPlayerNetworkId(), store);
+                    spawnVirtualEntity(newNet2, pos2, "", uuid, pos, s.getPlayerNetworkId(), store);
+                    spawnVirtualEntity(newNet3, pos3, "", uuid, pos, s.getPlayerNetworkId(), store);
                 } else if (lineCount >= 2) {
                     int newNet2 = world.getEntityStore().takeNextNetworkId();
                     s.setLine2NetId(newNet2);
@@ -1963,13 +1978,13 @@ public class SpeechManager {
                     Vector3d pos1 = new Vector3d(pos.getX(), baseY + LINE_GAP / 2.0 + LINE1_NUDGE, pos.getZ());
                     Vector3d pos2 = new Vector3d(pos.getX(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, pos.getZ());
 
-                    spawnVirtualEntity(newNet1, pos1, initText, uuid, pos, store);
-                    spawnVirtualEntity(newNet2, pos2, "", uuid, pos, store);
+                    spawnVirtualEntity(newNet1, pos1, initText, uuid, pos, s.getPlayerNetworkId(), store);
+                    spawnVirtualEntity(newNet2, pos2, "", uuid, pos, s.getPlayerNetworkId(), store);
                 } else {
                     s.setLine2NetId(-1);
                     s.setLine3NetId(-1);
                     Vector3d bubblePos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(1), pos.getZ());
-                    spawnVirtualEntity(newNet1, bubblePos, initText, uuid, pos, store);
+                    spawnVirtualEntity(newNet1, bubblePos, initText, uuid, pos, s.getPlayerNetworkId(), store);
                 }
 
                 // Spawn page indicator for new superpage
@@ -1978,7 +1993,7 @@ public class SpeechManager {
                     s.setPageIndicatorNetId(piNetId);
                     int lc = s.getLineCount();
                     Vector3d piPos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(lc) + getPageIndicatorYOffset(lc), pos.getZ());
-                    spawnVirtualEntity(piNetId, piPos, superscriptPage(s.getCurrentPage()), uuid, pos, store);
+                    spawnVirtualEntity(piNetId, piPos, superscriptPage(s.getCurrentPage()), uuid, pos, s.getPlayerNetworkId(), store);
                 }
 
                 // Look ahead to pre-size for next word on new page
@@ -2389,44 +2404,6 @@ public class SpeechManager {
                 TransformComponent tc = store.getComponent(ref, TransformComponent.getComponentType());
                 if (tc != null) {
                     Vector3d currentPos = tc.getPosition();
-                    int netId = s.getVirtualEntityNetId();
-                    if (netId >= 0) {
-                        if (s.getLineCount() >= 3) {
-                            // 3-line: update all 3 nameplate positions
-                            double baseY = currentPos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(3);
-                            Vector3d pos1 = new Vector3d(currentPos.getX(), baseY + LINE_GAP + LINE1_NUDGE_3L, currentPos.getZ());
-                            sendPositionUpdate(netId, pos1, uuid, currentPos);
-                            int line2NetId = s.getLine2NetId();
-                            if (line2NetId >= 0) {
-                                Vector3d pos2 = new Vector3d(currentPos.getX(), baseY + LINE2_NUDGE_3L, currentPos.getZ());
-                                sendPositionUpdate(line2NetId, pos2, uuid, currentPos);
-                            }
-                            int line3NetId = s.getLine3NetId();
-                            if (line3NetId >= 0) {
-                                Vector3d pos3 = new Vector3d(currentPos.getX(), baseY - LINE_GAP + LINE3_NUDGE_3L, currentPos.getZ());
-                                sendPositionUpdate(line3NetId, pos3, uuid, currentPos);
-                            }
-                        } else if (s.getLineCount() >= 2) {
-                            // 2-line: update both nameplate positions
-                            double baseY = currentPos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(2);
-                            Vector3d pos1 = new Vector3d(currentPos.getX(), baseY + LINE_GAP / 2.0 + LINE1_NUDGE, currentPos.getZ());
-                            sendPositionUpdate(netId, pos1, uuid, currentPos);
-                            int line2NetId = s.getLine2NetId();
-                            if (line2NetId >= 0) {
-                                Vector3d pos2 = new Vector3d(currentPos.getX(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, currentPos.getZ());
-                                sendPositionUpdate(line2NetId, pos2, uuid, currentPos);
-                            }
-                        } else {
-                            updateVirtualEntityPosition(netId, currentPos, uuid, s.getHeightAdjust() + getBubbleYAdjust(1));
-                        }
-                    }
-                    // Update page indicator position
-                    int piNetId = s.getPageIndicatorNetId();
-                    if (piNetId >= 0) {
-                        int lc = s.getLineCount();
-                        Vector3d piPos = new Vector3d(currentPos.getX(), currentPos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(lc) + getPageIndicatorYOffset(lc), currentPos.getZ());
-                        sendPositionUpdate(piNetId, piPos, uuid, currentPos);
-                    }
                     s.setLastPosition(currentPos);
                 }
             });
