@@ -262,3 +262,4 @@ Bubbles triggered via the API use the speaker's own theme settings (color, light
 *   **Joey475574** — Testing & feedback
 *   **AZB** — Testing & feedback
 *   **Jalatxe** — Testing & feedback
+*   **DontActLikeMe** — Testing & feedback

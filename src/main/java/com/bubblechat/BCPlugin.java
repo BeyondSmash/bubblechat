@@ -9,6 +9,7 @@ import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerConnectEvent;
 import com.hypixel.hytale.server.core.io.adapter.PacketAdapters;
 import com.hypixel.hytale.server.core.io.adapter.PlayerPacketWatcher;
+import com.hypixel.hytale.event.EventPriority;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 
@@ -137,7 +138,7 @@ public class BCPlugin extends JavaPlugin {
 
         // Register chat event (PlayerChatEvent is IAsyncEvent<String>)
         // Handles RP channel prefixes (rp1/rp2/rp3/pbc), channel isolation, and confirmation flow
-        getEventRegistry().registerAsyncGlobal(PlayerChatEvent.class, future -> {
+        getEventRegistry().registerAsyncGlobal(EventPriority.FIRST, PlayerChatEvent.class, future -> {
             return future.thenApply(event -> {
                 if (event.isCancelled()) return event;
                 try {
