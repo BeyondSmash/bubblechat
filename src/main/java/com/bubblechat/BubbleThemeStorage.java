@@ -31,6 +31,11 @@ public class BubbleThemeStorage {
     }
 
     @Nonnull
+    public Map<String, PlayerBubbleTheme> getThemeMap() {
+        return java.util.Collections.unmodifiableMap(playerThemes);
+    }
+
+    @Nonnull
     public PlayerBubbleTheme getTheme(@Nonnull UUID uuid) {
         String key = uuid.toString();
         PlayerBubbleTheme theme = playerThemes.get(key);

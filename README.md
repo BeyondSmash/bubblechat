@@ -142,7 +142,7 @@ Open with `/bchat` for the full settings page:
 
 ## Installation
 
-1.  Drop `BubbleChat-1.5.2.jar` into your `Mods` folder
+1.  Drop `BubbleChat-1.6.8.jar` into your `Mods` folder
 2.  All player settings are per-player via the in-game GUI — no setup required
 
 ### Server Configuration (Optional)
@@ -167,18 +167,17 @@ On first run, BubbleChat creates a `bubblechat-config.json` in the plugin data d
 
 ## Known Issues
 
-### `[AssetUpdate]` messages on connect
+### `[AssetUpdate]` message on first chat
 
-When joining a server with BubbleChat, you may see 2 `[AssetUpdate]` log messages in chat:
+The first time a player sends a chat message on a server with BubbleChat, they may see 1 `[AssetUpdate]` log message in chat:
 
 ```
 [AssetUpdate] ParticleSpawners: Starting AddOrUpdate
-[AssetUpdate] ParticleSystems: Starting AddOrUpdate
 ```
 
-**This is a Hytale client behavior, not a bug.** The client logs these messages whenever a plugin sends custom particle definitions after the initial load phase. BubbleChat needs to send its custom bubble particle configs to your client so the speech bubbles can render — there is no way to suppress these messages from the server side.
+**This is a Hytale client behavior, not a bug.** The client logs this message whenever a plugin sends custom particle definitions. BubbleChat sends its custom bubble particle configs lazily on first chat (rather than on join), so players who never chat see no messages at all.
 
-We've already minimized this from 11 messages down to 2 by batching all particle configs into a single packet. The remaining 2 messages are the minimum achievable without Hytale client changes. This will likely be resolved in a future Hytale update as the game matures past Early Access.
+This will likely be resolved in a future Hytale update as the game matures past Early Access.
 
 ### Head rotation animation
 
@@ -192,7 +191,7 @@ There is no server-side API to detect whether a player is in a Hytale voice chat
 
 BubbleChat's text is rendered using the vanilla Nameplate element (the same system that displays player usernames above their heads). This means the font, text color, and text styling are controlled entirely by Hytale's built-in nameplate renderer — there is currently no server-side API to change these properties.
 
-My hope is that Hypixel adds more support for Nameplate customization (text color, font changes, styling, etc.) in a future update. Once that API exists, I'll update BubbleChat to support those features. Additionally, the text currently uses a virtual entity positioned by the server, whereas the bubble background uses entity-attached particles that track the player at client frame rate. Ideally the text could also be entity-attached for the smoothest possible tracking, but that isn't available for nameplates yet.
+My hope is that Hypixel adds more support for Nameplate customization (text color, font changes, styling, etc.) in a future update. Once that API exists, I'll update BubbleChat to support those features.
 
 ***
 
@@ -248,6 +247,17 @@ BubbleChatAPI.hasActiveBubble(playerRef);
 ```
 
 Bubbles triggered via the API use the speaker's own theme settings (color, light/dark mode) and respect all viewer-side preferences (color overrides, mute, hide, cull distance).
+
+***
+
+## Changelog
+
+### 1.6.8
+
+* `[AssetUpdate]` messages no longer appear on join — particle configs are now sent lazily on first chat, so players who never chat see zero asset update messages
+* Fixed entity tool props not restoring their scale after the first chat message — scale restoration now applies on every chat, not just the first
+* Fixed item entity props (e.g. sword drops) placed via the entity tool never having their scale restored
+* Scale restoration is now effectively instant (was 1.5s delay)
 
 ***
 

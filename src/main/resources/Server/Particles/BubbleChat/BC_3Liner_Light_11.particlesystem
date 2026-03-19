@@ -1,0 +1,12 @@
+{
+  "Spawners": [
+    {
+      "SpawnerId": "BC_3Liner_Light_11",
+      "FixedRotation": false
+    }
+  ],
+  "LifeSpan": 0.32,
+  "CullDistance": 1000.0,
+  "BoundingRadius": 1000.0,
+  "IsImportant": false
+}

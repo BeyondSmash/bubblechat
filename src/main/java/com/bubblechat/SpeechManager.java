@@ -7,7 +7,15 @@ import com.hypixel.hytale.math.shape.Box;
 import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.math.vector.Vector3f;
 import com.hypixel.hytale.server.core.modules.entity.component.BoundingBox;
+import com.hypixel.hytale.protocol.BlockUpdate;
 import com.hypixel.hytale.protocol.Color;
+import com.hypixel.hytale.server.core.entity.entities.BlockEntity;
+import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
+import com.hypixel.hytale.server.core.modules.entity.component.EntityScaleComponent;
+import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
+import com.hypixel.hytale.server.core.modules.entity.item.ItemComponent;
+import com.hypixel.hytale.protocol.ItemUpdate;
+import com.hypixel.hytale.protocol.TransformUpdate;
 import com.hypixel.hytale.protocol.ComponentUpdate;
 import com.hypixel.hytale.protocol.EntityUpdate;
 import com.hypixel.hytale.protocol.IntangibleUpdate;
@@ -20,7 +28,6 @@ import com.hypixel.hytale.protocol.RangeVector2f;
 import com.hypixel.hytale.protocol.Size;
 import com.hypixel.hytale.protocol.MountController;
 import com.hypixel.hytale.protocol.MountedUpdate;
-import com.hypixel.hytale.protocol.TransformUpdate;
 import com.hypixel.hytale.protocol.EmitShape;
 import com.hypixel.hytale.protocol.FXRenderMode;
 import com.hypixel.hytale.protocol.ParticleRotationInfluence;
@@ -42,7 +49,6 @@ import com.hypixel.hytale.server.core.asset.type.model.config.Model;
 import com.hypixel.hytale.server.core.asset.type.model.config.ModelAsset;
 import com.hypixel.hytale.server.core.asset.type.particle.config.ParticleSystem;
 import com.hypixel.hytale.server.core.modules.entity.component.HeadRotation;
-import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.damage.DeathComponent;
 import com.hypixel.hytale.server.core.modules.entity.tracker.NetworkId;
 import com.hypixel.hytale.server.core.Message;
@@ -79,6 +85,7 @@ import java.util.concurrent.TimeUnit;
 public class SpeechManager {
 
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
+
 
     private static final double PARTICLE_Y_OFFSET_DEFAULT = 3.70;
     private static final double BUBBLE_Y_OFFSET = 2.78;
@@ -627,63 +634,16 @@ public class SpeechManager {
             }
         }
 
-        try {
-            if (playerRef.getPacketHandler() == null) return;
-
-            // Batch ALL spawners and systems into two combined packets to minimize client log spam
-            Map<String, com.hypixel.hytale.protocol.ParticleSpawner> allSpawners = new HashMap<>();
-            Map<String, com.hypixel.hytale.protocol.ParticleSystem> allSystems = new HashMap<>();
-
-            // Collect base bubble spawners
-            if (cachedSpawnerUpdate != null && cachedSpawnerUpdate.particleSpawners != null)
-                allSpawners.putAll(cachedSpawnerUpdate.particleSpawners);
-            if (cachedSystemUpdate != null && cachedSystemUpdate.particleSystems != null)
-                allSystems.putAll(cachedSystemUpdate.particleSystems);
-
-            // Collect yell spawners
-            if (cachedYellSpawnerUpdate != null && cachedYellSpawnerUpdate.particleSpawners != null)
-                allSpawners.putAll(cachedYellSpawnerUpdate.particleSpawners);
-            if (cachedYellSystemUpdate != null && cachedYellSystemUpdate.particleSystems != null)
-                allSystems.putAll(cachedYellSystemUpdate.particleSystems);
-
-            // Collect per-speaker custom-colored spawners
-            for (var pkt : customColorSpawnerPackets.values()) {
-                if (pkt.particleSpawners != null) allSpawners.putAll(pkt.particleSpawners);
-            }
-            for (var pkt : customColorSystemPackets.values()) {
-                if (pkt.particleSystems != null) allSystems.putAll(pkt.particleSystems);
-            }
-
-            // Collect viewer-override color spawners
-            for (var pkt : overrideSpawnerPackets.values()) {
-                if (pkt.particleSpawners != null) allSpawners.putAll(pkt.particleSpawners);
-            }
-            for (var pkt : overrideSystemPackets.values()) {
-                if (pkt.particleSystems != null) allSystems.putAll(pkt.particleSystems);
-            }
-
-            // Send as two batched packets (1 spawner + 1 system = 2 client log lines)
-            if (!allSpawners.isEmpty()) {
-                playerRef.getPacketHandler().writeNoCache(
-                    new UpdateParticleSpawners(UpdateType.AddOrUpdate, allSpawners, null));
-            }
-            if (!allSystems.isEmpty()) {
-                playerRef.getPacketHandler().writeNoCache(
-                    new UpdateParticleSystems(UpdateType.AddOrUpdate, allSystems, null));
-            }
-        } catch (Exception e) {
-            LOGGER.atWarning().log("Failed to send particle configs to %s: %s",
-                playerRef.getUsername(), e.getMessage());
-        }
     }
 
     /**
      * Register per-speaker custom-colored spawner variants (one-time per speaker session).
-     * Creates cloned spawners with the speaker's custom tint color and sends to all connected players.
-     * Uses prefix "BCP{netId}_" to avoid name collisions.
+     * Creates cloned spawners with the speaker's custom tint color.
+     * Uses a stable UUID-based prefix for consistency.
      */
     private void registerSpeakerCustomColor(UUID speakerUuid, int speakerNetId, Color tint) {
-        String prefix = "BCP" + speakerNetId;
+        // Stable UUID-based prefix — consistent across pre-registration and runtime
+        String prefix = "BCP" + speakerUuid.toString().replace("-", "").substring(0, 8);
         float twoLinerScaleY = BUBBLE_SCALE_Y * (512f / 384f);
         float threeLinerScaleY = BUBBLE_SCALE_Y * (640f / 384f);
 
@@ -742,8 +702,119 @@ public class SpeechManager {
             } catch (Exception ignored) {}
         }
 
+        // UpdateParticleSpawners causes the Hytale client to reset entity-tool scaled entities to
+        // scale=1.0 visually (client bug). Force tracker to resend all entities fresh so client
+        // receives correct scales on the next tracker tick.
+        restoreEntityScalesViaTrackerResend();
+
         LOGGER.atInfo().log("Registered custom color spawners for speaker %s (prefix=%s, color=%s)",
             speakerUuid, prefix, tint);
+    }
+
+    /**
+     * Workaround for Hytale client bug: UpdateParticleSpawners resets the visual scale of
+     * entity-tool scaled entities without changing the client's cached entityScale value.
+     * Because the cached value still matches the server value, a direct BlockUpdate(correctScale)
+     * is detected as "no change" and the visual isn't refreshed.
+     *
+     * Fix: send a fake BlockUpdate(blockId, 1.0f) first (differs from cache → forces visual update),
+     * then immediately BlockUpdate(blockId, correctScale) to apply the real value.
+     * No despawn needed — entities stay visible throughout.
+     */
+    private void restoreEntityScalesViaTrackerResend() {
+        scheduler.schedule(() ->
+            Universe.get().getWorlds().forEach((name, w) ->
+                w.execute(() -> {
+                    Store<EntityStore> store = w.getEntityStore().getStore();
+
+                    // Collect scaled block entities and item entities separately
+                    java.util.List<int[]> blockIds = new java.util.concurrent.CopyOnWriteArrayList<>();
+                    java.util.List<float[]> blockScales = new java.util.concurrent.CopyOnWriteArrayList<>();
+                    java.util.List<Object[]> itemData = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+                    store.forEachEntityParallel(
+                        EntityScaleComponent.getComponentType(),
+                        (index, archetypeChunk, commandBuffer) -> {
+                            EntityScaleComponent sc = archetypeChunk.getComponent(index, EntityScaleComponent.getComponentType());
+                            if (sc == null || Math.abs(sc.getScale() - 1.0f) <= 0.001f) return;
+                            NetworkId networkId = archetypeChunk.getComponent(index, NetworkId.getComponentType());
+                            if (networkId == null) return;
+                            float correctScale = sc.getScale();
+
+                            BlockEntity blockEntity = archetypeChunk.getComponent(index, BlockEntity.getComponentType());
+                            if (blockEntity != null) {
+                                int blockId = BlockType.getAssetMap().getIndex(blockEntity.getBlockTypeKey());
+                                if (blockId == Integer.MIN_VALUE) return;
+                                blockIds.add(new int[]{networkId.getId(), blockId});
+                                blockScales.add(new float[]{correctScale});
+                                return;
+                            }
+
+                            ItemComponent itemComp = archetypeChunk.getComponent(index, ItemComponent.getComponentType());
+                            if (itemComp != null) {
+                                com.hypixel.hytale.server.core.inventory.ItemStack stack = itemComp.getItemStack();
+                                if (stack == null) return;
+                                com.hypixel.hytale.protocol.ItemWithAllMetadata pkt = stack.toPacket();
+                                if (pkt == null) return;
+                                itemData.add(new Object[]{networkId.getId(), pkt, correctScale});
+                            }
+                        }
+                    );
+
+                    if (blockIds.isEmpty() && itemData.isEmpty()) return;
+
+                    // Block entities: fake(1.0f) then real(correctScale)
+                    EntityUpdates fakePacket = new EntityUpdates();
+                    EntityUpdates realPacket = new EntityUpdates();
+                    if (!blockIds.isEmpty()) {
+                        EntityUpdate[] fakeUpdates = new EntityUpdate[blockIds.size()];
+                        EntityUpdate[] realUpdates = new EntityUpdate[blockIds.size()];
+                        for (int i = 0; i < blockIds.size(); i++) {
+                            fakeUpdates[i] = new EntityUpdate(blockIds.get(i)[0], null,
+                                new ComponentUpdate[]{new BlockUpdate(blockIds.get(i)[1], 1.0f)});
+                            realUpdates[i] = new EntityUpdate(blockIds.get(i)[0], null,
+                                new ComponentUpdate[]{new BlockUpdate(blockIds.get(i)[1], blockScales.get(i)[0])});
+                        }
+                        fakePacket.updates = fakeUpdates;
+                        realPacket.updates = realUpdates;
+                    }
+
+                    // Item entities: fake(1.0f) then real(correctScale)
+                    EntityUpdates fakeItemPacket = new EntityUpdates();
+                    EntityUpdates realItemPacket = new EntityUpdates();
+                    if (!itemData.isEmpty()) {
+                        EntityUpdate[] fakeItemUpdates = new EntityUpdate[itemData.size()];
+                        EntityUpdate[] realItemUpdates = new EntityUpdate[itemData.size()];
+                        for (int i = 0; i < itemData.size(); i++) {
+                            Object[] d = itemData.get(i);
+                            int netId = (int) d[0];
+                            com.hypixel.hytale.protocol.ItemWithAllMetadata itemPkt =
+                                (com.hypixel.hytale.protocol.ItemWithAllMetadata) d[1];
+                            float correctScale = (float) d[2];
+                            fakeItemUpdates[i] = new EntityUpdate(netId, null,
+                                new ComponentUpdate[]{new ItemUpdate(itemPkt, 1.0f)});
+                            realItemUpdates[i] = new EntityUpdate(netId, null,
+                                new ComponentUpdate[]{new ItemUpdate(itemPkt, correctScale)});
+                        }
+                        fakeItemPacket.updates = fakeItemUpdates;
+                        realItemPacket.updates = realItemUpdates;
+                    }
+
+                    for (PlayerRef p : Universe.get().getPlayers()) {
+                        try {
+                            if (!blockIds.isEmpty()) {
+                                p.getPacketHandler().writeNoCache(fakePacket);
+                                p.getPacketHandler().writeNoCache(realPacket);
+                            }
+                            if (!itemData.isEmpty()) {
+                                p.getPacketHandler().writeNoCache(fakeItemPacket);
+                                p.getPacketHandler().writeNoCache(realItemPacket);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                })
+            ),
+        100, java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -1459,6 +1530,10 @@ public class SpeechManager {
                             || !registeredHex.equals(currentHex);
                     if (needsRegister) {
                         registerSpeakerCustomColor(uuid, state.getPlayerNetworkId(), customTint);
+                    } else {
+                        // SpawnModelParticles with a new virtual entity ID also resets
+                        // client entity-tool scales, even without UpdateParticleSpawners.
+                        restoreEntityScalesViaTrackerResend();
                     }
                 } else {
                     // No custom color — clear any stale per-speaker spawners
@@ -1568,7 +1643,7 @@ public class SpeechManager {
         } else {
             com.hypixel.hytale.protocol.Model fallbackModel = new com.hypixel.hytale.protocol.Model();
             fallbackModel.scale = 0.001f;
-            modelUpdate = new ModelUpdate(fallbackModel, 0.001f);
+            modelUpdate = new ModelUpdate(fallbackModel, 1.0f);
         }
 
         ModelTransform mt = new ModelTransform();

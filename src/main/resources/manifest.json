@@ -1,7 +1,7 @@
 {
   "Group": "BeyondSmash",
   "Name": "BubbleChat",
-  "Version": "1.6.7",
+  "Version": "1.6.8",
   "Description": "Displays animated speech bubbles above players when they chat",
   "Authors": [
     { "Name": "BeyondSmash" }

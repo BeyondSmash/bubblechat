@@ -1,0 +1,12 @@
+{
+  "Spawners": [
+    {
+      "SpawnerId": "BC_2Liner_Light_7_Fade",
+      "FixedRotation": false
+    }
+  ],
+  "LifeSpan": 0.5,
+  "CullDistance": 1000.0,
+  "BoundingRadius": 1000.0,
+  "IsImportant": false
+}
