@@ -252,12 +252,14 @@ Bubbles triggered via the API use the speaker's own theme settings (color, light
 
 ## Changelog
 
-### 1.6.8
+## BubbleChat 1.6.8
 
-* `[AssetUpdate]` messages no longer appear on join — particle configs are now sent lazily on first chat, so players who never chat see zero asset update messages
-* Fixed entity tool props not restoring their scale after the first chat message — scale restoration now applies on every chat, not just the first
-* Fixed item entity props (e.g. sword drops) placed via the entity tool never having their scale restored
-* Scale restoration is now effectively instant (was 1.5s delay)
+### Fixed
+
+*   `[AssetUpdate]` messages no longer appear on join — particle configs are now sent lazily on first chat, so players who never chat see zero asset update messages
+*   Entity tool props not restoring their scale after the first chat message — scale restoration now applies on every chat, not just the first
+*   Item entity props (e.g. sword drops) placed via the entity tool never having their scale restored
+*   Scale restoration is now effectively instant (was 1.5s delay)
 
 ***
 
