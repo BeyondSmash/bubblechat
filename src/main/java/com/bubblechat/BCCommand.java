@@ -123,6 +123,11 @@ public class BCCommand extends AbstractPlayerCommand {
         }
 
 
+        if (trimmed.toLowerCase().startsWith("text")) {
+            handleText(context, trimmed, uuid);
+            return;
+        }
+
         if (trimmed.equalsIgnoreCase("toggle")) {
             boolean nowEnabled = manager.togglePlayer(uuid);
             context.sendMessage(Message.raw(
@@ -131,6 +136,20 @@ public class BCCommand extends AbstractPlayerCommand {
         } else {
             context.sendMessage(Message.raw("Unknown subcommand: " + trimmed));
             context.sendMessage(Message.raw("Use /bchat help for usage."));
+        }
+    }
+
+    private void handleText(@Nonnull CommandContext context, @Nonnull String trimmed, UUID uuid) {
+        String arg = trimmed.length() > 4 ? trimmed.substring(4).trim() : "";
+        if (arg.equalsIgnoreCase("instant")) {
+            PlayerBubbleTheme theme = themeStorage.getTheme(uuid);
+            theme.instantText = !theme.instantText;
+            themeStorage.saveAsync(manager.getScheduler());
+            context.sendMessage(Message.raw("Text reveal: " + (theme.instantText ? "instant" : "word-by-word") + "."));
+        } else {
+            boolean current = themeStorage.getTheme(uuid).instantText;
+            context.sendMessage(Message.raw("Text reveal: " + (current ? "instant" : "word-by-word") + "."));
+            context.sendMessage(Message.raw("Usage: /bchat text instant - Toggle instant text reveal"));
         }
     }
 
@@ -239,6 +258,7 @@ public class BCCommand extends AbstractPlayerCommand {
         context.sendMessage(Message.raw("/bchat clear - Dismiss current bubble"));
         context.sendMessage(Message.raw("/bchat theme light|dark - Set mode"));
         context.sendMessage(Message.raw("/bchat theme color <#RRGGBB|reset> - Set tint"));
+        context.sendMessage(Message.raw("/bchat text instant - Toggle instant text reveal"));
         context.sendMessage(Message.raw("/bchat status - Show settings"));
     }
 }

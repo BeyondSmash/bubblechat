@@ -263,6 +263,8 @@ public class SpeechManager {
     private UpdateParticleSystems cachedSystemUpdate;
     private UpdateParticleSpawners cachedYellSpawnerUpdate;
     private UpdateParticleSystems cachedYellSystemUpdate;
+    // Tracks viewers who have already received base particle configs (lazy registration)
+    private final Set<UUID> baseParticlesRegistered = ConcurrentHashMap.newKeySet();
     private ScheduledExecutorService scheduler;
 
     // Per-speaker custom-colored spawner packets (one-time registration per speaker session)
@@ -634,6 +636,40 @@ public class SpeechManager {
             }
         }
 
+        // NOTE: Particle configs are NOT sent on connect — they're sent lazily on first chat
+        // via the baseParticlesRegistered flow. This avoids [AssetUpdate] stutter on login.
+    }
+
+    /** Send a single combined UpdateParticleSpawners + UpdateParticleSystems to a viewer.
+     *  Merges base + yell + all custom color spawners into one packet each. */
+    private void sendCombinedParticleConfigs(PlayerRef viewer) {
+        Map<String, com.hypixel.hytale.protocol.ParticleSpawner> allSpawners = new HashMap<>();
+        Map<String, com.hypixel.hytale.protocol.ParticleSystem> allSystems = new HashMap<>();
+
+        if (cachedSpawnerUpdate != null && cachedSpawnerUpdate.particleSpawners != null)
+            allSpawners.putAll(cachedSpawnerUpdate.particleSpawners);
+        if (cachedSystemUpdate != null && cachedSystemUpdate.particleSystems != null)
+            allSystems.putAll(cachedSystemUpdate.particleSystems);
+        if (cachedYellSpawnerUpdate != null && cachedYellSpawnerUpdate.particleSpawners != null)
+            allSpawners.putAll(cachedYellSpawnerUpdate.particleSpawners);
+        if (cachedYellSystemUpdate != null && cachedYellSystemUpdate.particleSystems != null)
+            allSystems.putAll(cachedYellSystemUpdate.particleSystems);
+
+        for (Map.Entry<UUID, UpdateParticleSpawners> entry : customColorSpawnerPackets.entrySet()) {
+            if (entry.getValue().particleSpawners != null)
+                allSpawners.putAll(entry.getValue().particleSpawners);
+            UpdateParticleSystems sys = customColorSystemPackets.get(entry.getKey());
+            if (sys != null && sys.particleSystems != null)
+                allSystems.putAll(sys.particleSystems);
+        }
+
+        if (!allSpawners.isEmpty())
+            viewer.getPacketHandler().writeNoCache(new UpdateParticleSpawners(UpdateType.AddOrUpdate, allSpawners, null));
+        if (!allSystems.isEmpty())
+            viewer.getPacketHandler().writeNoCache(new UpdateParticleSystems(UpdateType.AddOrUpdate, allSystems, null));
+
+        // Also send mouth animation registration (UpdateItemPlayerAnimations)
+        viewer.getPacketHandler().writeNoCache(getMouthRegisterPacket());
     }
 
     /**
@@ -692,7 +728,7 @@ public class SpeechManager {
         String effectiveHex = resolveEffectiveHex(speakerUuid);
         if (effectiveHex != null) registeredCustomColorHex.put(speakerUuid, effectiveHex);
 
-        // Send to all connected players
+        // Send to all connected players (runtime registration during chat — used by color changes mid-session)
         for (PlayerRef p : Universe.get().getPlayers()) {
             try {
                 if (p.getPacketHandler() != null) {
@@ -709,6 +745,113 @@ public class SpeechManager {
 
         LOGGER.atInfo().log("Registered custom color spawners for speaker %s (prefix=%s, color=%s)",
             speakerUuid, prefix, tint);
+    }
+
+    /** Build and cache custom color spawners without sending or restoring entity scales.
+     *  Used in onChat flow — the lazy combined packet handles delivery. */
+    private void buildSpeakerCustomColor(UUID speakerUuid, int speakerNetId, Color tint) {
+        String prefix = "BCP" + speakerUuid.toString().replace("-", "").substring(0, 8);
+        float twoLinerScaleY = BUBBLE_SCALE_Y * (512f / 384f);
+        float threeLinerScaleY = BUBBLE_SCALE_Y * (640f / 384f);
+
+        Map<String, com.hypixel.hytale.protocol.ParticleSpawner> spawners = new HashMap<>();
+        Map<String, com.hypixel.hytale.protocol.ParticleSystem> systems = new HashMap<>();
+
+        String[][][] allTextures = {
+            VARIANT_TEXTURES, VARIANT_2LINER_TEXTURES, VARIANT_3LINER_TEXTURES,
+            VARIANT_TEXTURES_LIGHT, VARIANT_2LINER_LIGHT_TEXTURES, VARIANT_3LINER_LIGHT_TEXTURES
+        };
+        float[] scaleYValues = {
+            BUBBLE_SCALE_Y, twoLinerScaleY, threeLinerScaleY,
+            BUBBLE_SCALE_Y, twoLinerScaleY, threeLinerScaleY
+        };
+
+        for (int i = 0; i < allTextures.length; i++) {
+            for (String[] variant : allTextures[i]) {
+                String baseName = variant[0];
+                String customName = prefix + "_" + baseName.substring(3);
+                String fadeName = customName + "_Fade";
+                String texturePath = variant[1];
+                int texW = Integer.parseInt(variant[2]);
+                int texH = Integer.parseInt(variant[3]);
+
+                spawners.put(customName, createBubbleSpawner(customName, texturePath,
+                    texW, texH, tint, scaleYValues[i], PARTICLE_LIFESPAN, 1.0f));
+                systems.put(customName, createBubbleSystem(customName, PARTICLE_LIFESPAN));
+
+                spawners.put(fadeName, createBubbleSpawner(fadeName, texturePath,
+                    texW, texH, tint, scaleYValues[i], FADE_LIFESPAN, 0f));
+                systems.put(fadeName, createBubbleSystem(fadeName, FADE_LIFESPAN));
+            }
+        }
+
+        customColorSpawnerPackets.put(speakerUuid, new UpdateParticleSpawners(UpdateType.AddOrUpdate, spawners, null));
+        customColorSystemPackets.put(speakerUuid, new UpdateParticleSystems(UpdateType.AddOrUpdate, systems, null));
+        customColorPrefixes.put(speakerUuid, prefix);
+
+        String effectiveHex = resolveEffectiveHex(speakerUuid);
+        if (effectiveHex != null) registeredCustomColorHex.put(speakerUuid, effectiveHex);
+    }
+
+    /**
+     * Pre-register custom color spawners on player connect.
+     * Builds and caches the spawner/system packets, sends only to the connecting player,
+     * and does NOT call restoreEntityScalesViaTrackerResend (no entity scale disruption on connect).
+     * This prevents UpdateParticleSpawners from being sent during the first chat's world.execute(),
+     * which would cause [AssetUpdate] processing to disrupt mounted entity positioning.
+     */
+    private void preRegisterCustomColor(UUID speakerUuid, Color tint, PlayerRef connectingPlayer) {
+        String prefix = "BCP" + speakerUuid.toString().replace("-", "").substring(0, 8);
+        float twoLinerScaleY = BUBBLE_SCALE_Y * (512f / 384f);
+        float threeLinerScaleY = BUBBLE_SCALE_Y * (640f / 384f);
+
+        Map<String, com.hypixel.hytale.protocol.ParticleSpawner> spawners = new HashMap<>();
+        Map<String, com.hypixel.hytale.protocol.ParticleSystem> systems = new HashMap<>();
+
+        String[][][] allTextures = {
+            VARIANT_TEXTURES, VARIANT_2LINER_TEXTURES, VARIANT_3LINER_TEXTURES,
+            VARIANT_TEXTURES_LIGHT, VARIANT_2LINER_LIGHT_TEXTURES, VARIANT_3LINER_LIGHT_TEXTURES
+        };
+        float[] scaleYValues = {
+            BUBBLE_SCALE_Y, twoLinerScaleY, threeLinerScaleY,
+            BUBBLE_SCALE_Y, twoLinerScaleY, threeLinerScaleY
+        };
+
+        for (int i = 0; i < allTextures.length; i++) {
+            for (String[] variant : allTextures[i]) {
+                String baseName = variant[0];
+                String customName = prefix + "_" + baseName.substring(3);
+                String fadeName = customName + "_Fade";
+                String texturePath = variant[1];
+                int texW = Integer.parseInt(variant[2]);
+                int texH = Integer.parseInt(variant[3]);
+
+                spawners.put(customName, createBubbleSpawner(customName, texturePath,
+                    texW, texH, tint, scaleYValues[i], PARTICLE_LIFESPAN, 1.0f));
+                systems.put(customName, createBubbleSystem(customName, PARTICLE_LIFESPAN));
+
+                spawners.put(fadeName, createBubbleSpawner(fadeName, texturePath,
+                    texW, texH, tint, scaleYValues[i], FADE_LIFESPAN, 0f));
+                systems.put(fadeName, createBubbleSystem(fadeName, FADE_LIFESPAN));
+            }
+        }
+
+        UpdateParticleSpawners spawnerPacket = new UpdateParticleSpawners(UpdateType.AddOrUpdate, spawners, null);
+        UpdateParticleSystems systemPacket = new UpdateParticleSystems(UpdateType.AddOrUpdate, systems, null);
+
+        customColorSpawnerPackets.put(speakerUuid, spawnerPacket);
+        customColorSystemPackets.put(speakerUuid, systemPacket);
+        customColorPrefixes.put(speakerUuid, prefix);
+
+        String effectiveHex = resolveEffectiveHex(speakerUuid);
+        if (effectiveHex != null) registeredCustomColorHex.put(speakerUuid, effectiveHex);
+
+        // If called from connect, connectingPlayer is null — packets are merged into
+        // the combined batch. Otherwise send directly.
+        if (connectingPlayer != null) {
+            connectingPlayer.getPacketHandler().writeNoCache(spawnerPacket);
+            connectingPlayer.getPacketHandler().writeNoCache(systemPacket);
+        }
     }
 
     /**
@@ -1474,10 +1617,15 @@ public class SpeechManager {
             state.setLine2EndWordIndex(lastEffective);
         }
 
+        boolean instant = themeStorage != null && themeStorage.getTheme(uuid).instantText;
+
         // Look ahead one word for initial tile count so first word has padding
         String initSizeText = words[0];
-        if (words.length > 1 && state.getLine1EndWordIndex() >= 1) {
+        if (!instant && words.length > 1 && state.getLine1EndWordIndex() >= 1) {
             initSizeText = words[0] + " " + words[1];
+        } else if (instant) {
+            // Full line width for bubble sizing
+            initSizeText = joinWords(words, 0, state.getLine1EndWordIndex());
         }
         state.setTileCount(selectTileCount(getWeightedLength(initSizeText)));
         activeSpeech.put(uuid, state);
@@ -1517,9 +1665,10 @@ public class SpeechManager {
                 state.setHeightAdjust(ha > 0 ? ha : 0.0);
             }
 
-            state.setCurrentWordIndex(0);
+            state.setCurrentWordIndex(instant ? state.getLastEffectiveWordIndex() : 0);
 
-            // Register per-speaker custom color spawners (one-time, or re-register if color changed)
+            // Register per-speaker custom color spawners (build only, don't broadcast yet)
+            boolean customColorJustRegistered = false;
             if (themeStorage != null && state.getPlayerNetworkId() >= 0) {
                 Color customTint = resolveEffectiveTint(uuid);
                 if (customTint != null) {
@@ -1529,7 +1678,8 @@ public class SpeechManager {
                             || registeredHex == null
                             || !registeredHex.equals(currentHex);
                     if (needsRegister) {
-                        registerSpeakerCustomColor(uuid, state.getPlayerNetworkId(), customTint);
+                        buildSpeakerCustomColor(uuid, state.getPlayerNetworkId(), customTint);
+                        customColorJustRegistered = true;
                     } else {
                         // SpawnModelParticles with a new virtual entity ID also resets
                         // client entity-tool scales, even without UpdateParticleSpawners.
@@ -1542,6 +1692,28 @@ public class SpeechManager {
                     customColorSystemPackets.remove(uuid);
                     registeredCustomColorHex.remove(uuid);
                 }
+            }
+
+            // Lazy particle registration — send a single combined packet (base + yell + custom)
+            // BEFORE spawning entities so [AssetUpdate] completes before MountedUpdate
+            // New viewers get everything in one shot. Existing viewers only get new custom
+            // color spawners if just registered.
+            List<PlayerRef> viewers = getViewers(uuid, pos);
+            for (PlayerRef viewer : viewers) {
+                if (viewer.getPacketHandler() == null) continue;
+                if (baseParticlesRegistered.add(viewer.getUuid())) {
+                    // New viewer — send everything combined (1 asset update)
+                    sendCombinedParticleConfigs(viewer);
+                } else if (customColorJustRegistered) {
+                    // Existing viewer — only send the new custom color spawners
+                    UpdateParticleSpawners csp = customColorSpawnerPackets.get(uuid);
+                    UpdateParticleSystems css = customColorSystemPackets.get(uuid);
+                    if (csp != null) viewer.getPacketHandler().writeNoCache(csp);
+                    if (css != null) viewer.getPacketHandler().writeNoCache(css);
+                }
+            }
+            if (customColorJustRegistered) {
+                restoreEntityScalesViaTrackerResend();
             }
 
             if (state.getLineCount() >= 3) {
@@ -1560,9 +1732,12 @@ public class SpeechManager {
                 Vector3d pos3 = new Vector3d(pos.getX(), baseY - LINE_GAP + LINE3_NUDGE_3L, pos.getZ());
 
                 int playerNetId = state.getPlayerNetworkId();
-                spawnVirtualEntity(netId1, pos1, words[0], uuid, pos, playerNetId, store);
-                spawnVirtualEntity(netId2, pos2, "", uuid, pos, playerNetId, store);
-                spawnVirtualEntity(netId3, pos3, "", uuid, pos, playerNetId, store);
+                String l1_3 = instant ? joinWords(words, 0, state.getLine1EndWordIndex()) : words[0];
+                String l2_3 = instant ? joinWords(words, state.getLine1EndWordIndex() + 1, state.getLine2EndWordIndex()) : "";
+                String l3_3 = instant ? joinWords(words, state.getLine2EndWordIndex() + 1, state.getLastEffectiveWordIndex()) : "";
+                spawnVirtualEntity(netId1, pos1, l1_3, uuid, pos, playerNetId, store);
+                spawnVirtualEntity(netId2, pos2, l2_3, uuid, pos, playerNetId, store);
+                spawnVirtualEntity(netId3, pos3, l3_3, uuid, pos, playerNetId, store);
 
                 if (playerNetId >= 0) {
                     try { sendBubbleParticle(uuid, playerNetId, state.getTileCount(), 3); }
@@ -1581,8 +1756,10 @@ public class SpeechManager {
                 Vector3d pos2 = new Vector3d(pos.getX(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, pos.getZ());
 
                 int playerNetId = state.getPlayerNetworkId();
-                spawnVirtualEntity(netId1, pos1, words[0], uuid, pos, playerNetId, store);
-                spawnVirtualEntity(netId2, pos2, "", uuid, pos, playerNetId, store);
+                String l1_2 = instant ? joinWords(words, 0, state.getLine1EndWordIndex()) : words[0];
+                String l2_2 = instant ? joinWords(words, state.getLine1EndWordIndex() + 1, state.getLine2EndWordIndex()) : "";
+                spawnVirtualEntity(netId1, pos1, l1_2, uuid, pos, playerNetId, store);
+                spawnVirtualEntity(netId2, pos2, l2_2, uuid, pos, playerNetId, store);
 
                 if (playerNetId >= 0) {
                     try { sendBubbleParticle(uuid, playerNetId, state.getTileCount(), 2); }
@@ -1593,7 +1770,7 @@ public class SpeechManager {
                 int netId = world.getEntityStore().takeNextNetworkId();
                 state.setVirtualEntityNetId(netId);
 
-                String initialText = words[0];
+                String initialText = instant ? joinWords(words, 0, state.getLine1EndWordIndex()) : words[0];
                 int playerNetId = state.getPlayerNetworkId();
                 Vector3d bubblePos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(1), pos.getZ());
                 spawnVirtualEntity(netId, bubblePos, initialText, uuid, pos, playerNetId, store);
@@ -1615,11 +1792,18 @@ public class SpeechManager {
 
             scheduleParticleLoop(uuid, gen);
 
-            // Start mouth animation: register BC_Talk + play first word's mouth
-            registerMouthAnims(uuid, pos);
-            broadcastMouthForWord(uuid, words[0]);
-            broadcastAnimaleseForWord(uuid, words[0]);
+            // Yell particle must run on world thread (accesses store components)
             if (isYellWord(words[0])) sendYellParticle(uuid);
+
+            // Start mouth animation — delay slightly so client finishes processing
+            // entity spawning and particle setup before we play on the Action slot
+            final String firstWord = words[0];
+            scheduler.schedule(() -> {
+                Long cg = generationCounters.get(uuid);
+                if (cg == null || cg.longValue() != gen) return;
+                broadcastMouthForWord(uuid, firstWord);
+                broadcastAnimaleseForWord(uuid, firstWord);
+            }, 250, TimeUnit.MILLISECONDS);
 
             if (words.length > 1 && !state.isComplete()) {
                 scheduleNextWord(uuid, gen, world);
@@ -2526,6 +2710,7 @@ public class SpeechManager {
         clearSpeech(uuid);
         disabledPlayers.remove(uuid);
         selfVisiblePlayers.remove(uuid);
+        baseParticlesRegistered.remove(uuid);
     }
 
     public int getActiveCount() {
@@ -2603,7 +2788,7 @@ public class SpeechManager {
             String path = entry[1];
             Map<String, ItemAnimation> singleAnim = new HashMap<>();
             singleAnim.put(key, new ItemAnimation(
-                path, null, null, null, null, false, 1.0f, 0.05f, true, false
+                path, null, path, null, null, false, 1.0f, 0.05f, true, false
             ));
             ItemPlayerAnimations posAnims = new ItemPlayerAnimations(
                 key, singleAnim, null, null, null, false
@@ -2892,6 +3077,27 @@ public class SpeechManager {
 
     // ---- Mouth Animation System ----
 
+    /** Send mouth animation registration to a single player (called on connect). */
+    public void sendMouthRegistration(PlayerRef player) {
+        if (player.getPacketHandler() == null) return;
+        player.getPacketHandler().writeNoCache(getMouthRegisterPacket());
+    }
+
+    /** Prime the client's animation cache by playing BC_Rest on the player's own entity,
+     *  then immediately resetting. This forces the client to load blockyanim files from
+     *  the asset pack so they're cached when first chat happens. */
+    public void primeMouthAnimCache(PlayerRef player) {
+        if (player.getPacketHandler() == null) return;
+        Ref<EntityStore> ref = player.getReference();
+        if (ref == null || !ref.isValid()) return;
+        NetworkId nid = ref.getStore().getComponent(ref, NetworkId.getComponentType());
+        if (nid == null) return;
+        int netId = nid.getId();
+        // Play BC_Rest (default mouth = no visible change) then reset
+        player.getPacketHandler().writeNoCache(new PlayAnimation(netId, "BC_Rest", "BC_Rest", AnimationSlot.Action));
+        player.getPacketHandler().writeNoCache(new PlayAnimation(netId, "Default", null, AnimationSlot.Action));
+    }
+
     private void registerMouthAnims(UUID speakerUuid, Vector3d speakerPos) {
         UpdateItemPlayerAnimations packet = getMouthRegisterPacket();
         for (PlayerRef viewer : getViewers(speakerUuid, speakerPos)) {
@@ -3008,6 +3214,16 @@ public class SpeechManager {
         for (PlayerRef viewer : getViewers(speakerUuid, null)) {
             viewer.getPacketHandler().writeNoCache(reset);
         }
+    }
+
+    /** Join words[from..to] inclusive into a space-separated string. */
+    private static String joinWords(String[] words, int from, int to) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = from; i <= to && i < words.length; i++) {
+            if (i > from) sb.append(' ');
+            sb.append(words[i]);
+        }
+        return sb.toString();
     }
 
 }

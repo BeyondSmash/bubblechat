@@ -13,6 +13,9 @@ public class PlayerBubbleTheme {
 
     public boolean selfVisible = false;
 
+    /** When true, all words appear at once instead of word-by-word. Default false. */
+    public boolean instantText = false;
+
     // Animalese voice settings (speaker-side)
     public boolean animalese = true;       // on by default
     public int voiceType = 5;              // 0-7 (Voice 6 - Mellow)

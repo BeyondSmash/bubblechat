@@ -96,6 +96,8 @@ public class BCPlugin extends JavaPlugin {
             scheduler.schedule(() -> {
                 try {
                     speechManager.sendParticleConfigs(playerRef);
+                    // NOTE: mouth registration moved to lazy flow (sendCombinedParticleConfigs)
+                    // to avoid [AssetUpdate] stutter on login
                     // Apply saved theme (color/light mode) on top of default spawners
                     speechManager.applyThemeToPlayer(playerUuid, playerRef);
                 } catch (Exception e) {
