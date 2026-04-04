@@ -142,7 +142,7 @@ Open with `/bchat` for the full settings page:
 
 ## Installation
 
-1.  Drop `BubbleChat-1.6.8.jar` into your `Mods` folder
+1.  Drop `BubbleChat-1.7.2.jar` into your `Mods` folder
 2.  All player settings are per-player via the in-game GUI — no setup required
 
 ### Server Configuration (Optional)
@@ -252,14 +252,36 @@ Bubbles triggered via the API use the speaker's own theme settings (color, light
 
 ## Changelog
 
+## BubbleChat 1.7.2
+
+### Fixed
+- Player color override spawners (per-player/global color overrides) not being included in the combined particle packet — caused "Could not find particle system settings" errors and missing bubble backgrounds for players with color overrides
+- Light mode with no custom tint color rendering white-on-white (unreadable) — now falls back to dark mode bubble when no custom color is set
+
+## BubbleChat 1.7.1
+
+### Fixed
+- Bubble backgrounds not showing for other players in multiplayer — particle configs are now sent as a single combined packet per viewer
+- Mouth expressions (visemes) not playing — switched to a compatible animation slot that properly supports dynamically registered animations on player entities
+- Mouth expressions not appearing on first chat after joining — added a brief delay so the client finishes processing entity/particle setup before animations play
+- Yell particle effect not firing — fixed a silent crash caused by accessing world-thread-only data from the scheduler thread
+- Text occasionally appearing above the bubble background on first chat — custom color spawner registration no longer sends asset updates during entity spawning
+- Yell particle spawners missing for remote players who join after the speaker
+
+### Added
+- **Instant text mode** — `/bchat text instant` toggles word-by-word reveal vs. all words appearing at once
+
+### Improved
+- Reduced login stutter — particle configs are no longer sent on connect; all asset updates are deferred to first chat
+- Single `[AssetUpdate]` on first chat — all particle spawners, systems, yell configs, custom colors, and mouth animations are merged into one combined packet per viewer
+
 ## BubbleChat 1.6.8
 
 ### Fixed
-
-*   `[AssetUpdate]` messages no longer appear on join — particle configs are now sent lazily on first chat, so players who never chat see zero asset update messages
-*   Entity tool props not restoring their scale after the first chat message — scale restoration now applies on every chat, not just the first
-*   Item entity props (e.g. sword drops) placed via the entity tool never having their scale restored
-*   Scale restoration is now effectively instant (was 1.5s delay)
+- `[AssetUpdate]` messages no longer appear on join - particle configs are now sent lazily on first chat, so players who never chat see zero asset update messages
+- Entity tool props not restoring their scale after the first chat message - scale restoration now applies on every chat, not just the first
+- Item entity props (e.g. sword drops) placed via the entity tool never having their scale restored
+- Scale restoration is now effectively instant
 
 ***
 

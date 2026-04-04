@@ -663,6 +663,15 @@ public class SpeechManager {
                 allSystems.putAll(sys.particleSystems);
         }
 
+        // Include viewer-side override color spawners (global/per-player color overrides)
+        for (Map.Entry<String, UpdateParticleSpawners> entry : overrideSpawnerPackets.entrySet()) {
+            if (entry.getValue().particleSpawners != null)
+                allSpawners.putAll(entry.getValue().particleSpawners);
+            UpdateParticleSystems sys = overrideSystemPackets.get(entry.getKey());
+            if (sys != null && sys.particleSystems != null)
+                allSystems.putAll(sys.particleSystems);
+        }
+
         if (!allSpawners.isEmpty())
             viewer.getPacketHandler().writeNoCache(new UpdateParticleSpawners(UpdateType.AddOrUpdate, allSpawners, null));
         if (!allSystems.isEmpty())
@@ -2479,12 +2488,13 @@ public class SpeechManager {
                     : (light ? "Bubble_Light_" : "Bubble_");
             return customPrefix + "_" + lineType + tileCount;
         }
-        // Default dark/light
+        // No custom color — light mode without tint is white-on-white (unreadable),
+        // so fall back to dark mode for the default spawner
         String prefix = lineCount >= 3
-            ? (light ? "BC_3Liner_Light_" : "BC_3Liner_")
+            ? "BC_3Liner_"
             : lineCount >= 2
-                ? (light ? "BC_2Liner_Light_" : "BC_2Liner_")
-                : (light ? "BC_Bubble_Light_" : "BC_Bubble_");
+                ? "BC_2Liner_"
+                : "BC_Bubble_";
         return prefix + tileCount;
     }
 
