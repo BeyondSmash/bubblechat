@@ -6,7 +6,7 @@ plugins {
 apply(from = "../gradle/hytale-version.gradle.kts")
 
 group = "com.bubblechat"
-version = "1.7.2"
+version = "1.8.0"
 
 repositories {
     mavenCentral()
@@ -18,19 +18,23 @@ repositories {
         }
     }
     flatDir {
-        dirs("C:\\Users\\Beyon\\AppData\\Roaming\\Hytale\\install\\pre-release\\package\\game\\latest\\Server")
+        dirs("C:\\Users\\Beyon\\AppData\\Roaming\\Hytale\\install\\release\\package\\game\\latest\\Server")
     }
 }
 
 dependencies {
-    compileOnly(files("C:\\Users\\Beyon\\AppData\\Roaming\\Hytale\\install\\pre-release\\package\\game\\latest\\Server\\HytaleServer.jar"))
+    compileOnly(files("C:\\Users\\Beyon\\AppData\\Roaming\\Hytale\\install\\release\\package\\game\\latest\\Server\\HytaleServer.jar"))
     implementation("com.google.code.findbugs:jsr305:3.0.2")
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
+}
+
+tasks.withType<JavaCompile> {
+    options.release.set(25)
 }
 
 tasks.processResources {
@@ -40,7 +44,7 @@ tasks.processResources {
 tasks.shadowJar {
     archiveBaseName.set("BubbleChat")
     archiveClassifier.set("")
-    archiveVersion.set("1.7.2")
+    archiveVersion.set("1.8.0")
     from("assets") {
         into("")
         exclude("manifest.json")

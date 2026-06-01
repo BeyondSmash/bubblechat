@@ -4,8 +4,8 @@ import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.math.shape.Box;
-import com.hypixel.hytale.math.vector.Vector3d;
-import com.hypixel.hytale.math.vector.Vector3f;
+import org.joml.Vector3d;
+import com.hypixel.hytale.math.vector.Rotation3f;
 import com.hypixel.hytale.server.core.modules.entity.component.BoundingBox;
 import com.hypixel.hytale.protocol.BlockUpdate;
 import com.hypixel.hytale.protocol.Color;
@@ -88,7 +88,10 @@ public class SpeechManager {
 
 
     private static final double PARTICLE_Y_OFFSET_DEFAULT = 3.70;
-    private static final double BUBBLE_Y_OFFSET = 2.78;
+    // U5 raised the height at which nameplates float above entities, so the floating
+    // text (a NameplateUpdate) rose above the bubble particle. 2.28 re-seats the text
+    // centered inside the bubble (calibrated in-game against particleYOffset=3.165).
+    private static final double BUBBLE_Y_OFFSET = 2.28;
     // Default player model bounding box top (box.max.y). Used to compute height adjustment for custom NPC models.
     private static final double DEFAULT_MODEL_TOP = 1.9;
     private static final long WORD_REVEAL_MS = 300;
@@ -1370,8 +1373,8 @@ public class SpeechManager {
                     TransformComponent vtc = viewerStore.getComponent(ref, TransformComponent.getComponentType());
                     if (vtc != null) {
                         Vector3d vp = vtc.getPosition();
-                        double dx = vp.getX() - speakerPos.getX();
-                        double dz = vp.getZ() - speakerPos.getZ();
+                        double dx = vp.x() - speakerPos.x();
+                        double dz = vp.z() - speakerPos.z();
                         if (dx * dx + dz * dz > maxRangeSq) continue;
                     }
                 } catch (IllegalStateException e) {
@@ -1426,8 +1429,8 @@ public class SpeechManager {
     }
 
     private static double distSqXZ(Vector3d a, Vector3d b) {
-        double dx = a.getX() - b.getX();
-        double dz = a.getZ() - b.getZ();
+        double dx = a.x() - b.x();
+        double dz = a.z() - b.z();
         return dx * dx + dz * dz;
     }
 
@@ -1513,8 +1516,8 @@ public class SpeechManager {
                                        : memberPrefs.getEffectiveRpCullDistance();
                     double maxRangeSq = (double) range * range;
                     Vector3d mPos = mtc.getPosition();
-                    double dx = mPos.getX() - senderPos.getX();
-                    double dz = mPos.getZ() - senderPos.getZ();
+                    double dx = mPos.x() - senderPos.x();
+                    double dz = mPos.z() - senderPos.z();
                     if (dx * dx + dz * dz > maxRangeSq) continue;
                 }
             }
@@ -1735,10 +1738,10 @@ public class SpeechManager {
                 state.setLine3NetId(netId3);
 
                 double ha = state.getHeightAdjust();
-                double baseY = pos.getY() + BUBBLE_Y_OFFSET + ha + getBubbleYAdjust(3);
-                Vector3d pos1 = new Vector3d(pos.getX(), baseY + LINE_GAP + LINE1_NUDGE_3L, pos.getZ());
-                Vector3d pos2 = new Vector3d(pos.getX(), baseY + LINE2_NUDGE_3L, pos.getZ());
-                Vector3d pos3 = new Vector3d(pos.getX(), baseY - LINE_GAP + LINE3_NUDGE_3L, pos.getZ());
+                double baseY = pos.y() + BUBBLE_Y_OFFSET + ha + getBubbleYAdjust(3);
+                Vector3d pos1 = new Vector3d(pos.x(), baseY + LINE_GAP + LINE1_NUDGE_3L, pos.z());
+                Vector3d pos2 = new Vector3d(pos.x(), baseY + LINE2_NUDGE_3L, pos.z());
+                Vector3d pos3 = new Vector3d(pos.x(), baseY - LINE_GAP + LINE3_NUDGE_3L, pos.z());
 
                 int playerNetId = state.getPlayerNetworkId();
                 String l1_3 = instant ? joinWords(words, 0, state.getLine1EndWordIndex()) : words[0];
@@ -1760,9 +1763,9 @@ public class SpeechManager {
                 state.setLine2NetId(netId2);
 
                 double ha = state.getHeightAdjust();
-                double baseY = pos.getY() + BUBBLE_Y_OFFSET + ha + getBubbleYAdjust(2);
-                Vector3d pos1 = new Vector3d(pos.getX(), baseY + LINE_GAP / 2.0 + LINE1_NUDGE, pos.getZ());
-                Vector3d pos2 = new Vector3d(pos.getX(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, pos.getZ());
+                double baseY = pos.y() + BUBBLE_Y_OFFSET + ha + getBubbleYAdjust(2);
+                Vector3d pos1 = new Vector3d(pos.x(), baseY + LINE_GAP / 2.0 + LINE1_NUDGE, pos.z());
+                Vector3d pos2 = new Vector3d(pos.x(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, pos.z());
 
                 int playerNetId = state.getPlayerNetworkId();
                 String l1_2 = instant ? joinWords(words, 0, state.getLine1EndWordIndex()) : words[0];
@@ -1781,7 +1784,7 @@ public class SpeechManager {
 
                 String initialText = instant ? joinWords(words, 0, state.getLine1EndWordIndex()) : words[0];
                 int playerNetId = state.getPlayerNetworkId();
-                Vector3d bubblePos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(1), pos.getZ());
+                Vector3d bubblePos = new Vector3d(pos.x(), pos.y() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(1), pos.z());
                 spawnVirtualEntity(netId, bubblePos, initialText, uuid, pos, playerNetId, store);
 
                 if (playerNetId >= 0) {
@@ -1795,7 +1798,7 @@ public class SpeechManager {
                 int piNetId = world.getEntityStore().takeNextNetworkId();
                 state.setPageIndicatorNetId(piNetId);
                 int lc = state.getLineCount();
-                Vector3d piPos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(lc) + getPageIndicatorYOffset(lc), pos.getZ());
+                Vector3d piPos = new Vector3d(pos.x(), pos.y() + BUBBLE_Y_OFFSET + state.getHeightAdjust() + getBubbleYAdjust(lc) + getPageIndicatorYOffset(lc), pos.z());
                 spawnVirtualEntity(piNetId, piPos, superscriptPage(state.getCurrentPage()), uuid, pos, state.getPlayerNetworkId(), store);
             }
 
@@ -1841,17 +1844,17 @@ public class SpeechManager {
 
         ModelTransform mt = new ModelTransform();
         mt.position = PositionUtil.toPositionPacket(position);
-        mt.bodyOrientation = PositionUtil.toDirectionPacket(new Vector3f(0, 0, 0));
-        mt.lookOrientation = PositionUtil.toDirectionPacket(new Vector3f(0, 0, 0));
+        mt.bodyOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
+        mt.lookOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
         TransformUpdate transformUpdate = new TransformUpdate(mt);
 
         // Attach virtual entity to player for client-side frame-rate position tracking
         MountedUpdate mountedUpdate = playerNetId >= 0
             ? new MountedUpdate(playerNetId,
-                new com.hypixel.hytale.protocol.Vector3f(
-                    (float)(position.getX() - speakerPos.getX()),
-                    (float)(position.getY() - speakerPos.getY()),
-                    (float)(position.getZ() - speakerPos.getZ())),
+                new org.joml.Vector3f(
+                    (float)(position.x() - speakerPos.x()),
+                    (float)(position.y() - speakerPos.y()),
+                    (float)(position.z() - speakerPos.z())),
                 MountController.Minecart, null)
             : null;
 
@@ -1883,11 +1886,11 @@ public class SpeechManager {
     // ---- Update virtual entity position (follow player) ----
     @SuppressWarnings("removal")
     private void updateVirtualEntityPosition(int netId, Vector3d playerPos, UUID speakerUuid, double yAdjust) {
-        Vector3d bubblePos = new Vector3d(playerPos.getX(), playerPos.getY() + BUBBLE_Y_OFFSET + yAdjust, playerPos.getZ());
+        Vector3d bubblePos = new Vector3d(playerPos.x(), playerPos.y() + BUBBLE_Y_OFFSET + yAdjust, playerPos.z());
         ModelTransform mt = new ModelTransform();
         mt.position = PositionUtil.toPositionPacket(bubblePos);
-        mt.bodyOrientation = PositionUtil.toDirectionPacket(new Vector3f(0, 0, 0));
-        mt.lookOrientation = PositionUtil.toDirectionPacket(new Vector3f(0, 0, 0));
+        mt.bodyOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
+        mt.lookOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
         TransformUpdate transformUpdate = new TransformUpdate(mt);
 
         EntityUpdate entityUpdate = new EntityUpdate(netId, null,
@@ -1903,8 +1906,8 @@ public class SpeechManager {
     private void sendPositionUpdate(int netId, Vector3d position, UUID speakerUuid, Vector3d speakerPos) {
         ModelTransform mt = new ModelTransform();
         mt.position = PositionUtil.toPositionPacket(position);
-        mt.bodyOrientation = PositionUtil.toDirectionPacket(new Vector3f(0, 0, 0));
-        mt.lookOrientation = PositionUtil.toDirectionPacket(new Vector3f(0, 0, 0));
+        mt.bodyOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
+        mt.lookOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
         TransformUpdate transformUpdate = new TransformUpdate(mt);
 
         EntityUpdate entityUpdate = new EntityUpdate(netId, null,
@@ -2229,10 +2232,10 @@ public class SpeechManager {
                     s.setLine2NetId(newNet2);
                     s.setLine3NetId(newNet3);
 
-                    double baseY = pos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(3);
-                    Vector3d pos1 = new Vector3d(pos.getX(), baseY + LINE_GAP + LINE1_NUDGE_3L, pos.getZ());
-                    Vector3d pos2 = new Vector3d(pos.getX(), baseY + LINE2_NUDGE_3L, pos.getZ());
-                    Vector3d pos3 = new Vector3d(pos.getX(), baseY - LINE_GAP + LINE3_NUDGE_3L, pos.getZ());
+                    double baseY = pos.y() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(3);
+                    Vector3d pos1 = new Vector3d(pos.x(), baseY + LINE_GAP + LINE1_NUDGE_3L, pos.z());
+                    Vector3d pos2 = new Vector3d(pos.x(), baseY + LINE2_NUDGE_3L, pos.z());
+                    Vector3d pos3 = new Vector3d(pos.x(), baseY - LINE_GAP + LINE3_NUDGE_3L, pos.z());
 
                     spawnVirtualEntity(newNet1, pos1, initText, uuid, pos, s.getPlayerNetworkId(), store);
                     spawnVirtualEntity(newNet2, pos2, "", uuid, pos, s.getPlayerNetworkId(), store);
@@ -2242,16 +2245,16 @@ public class SpeechManager {
                     s.setLine2NetId(newNet2);
                     s.setLine3NetId(-1);
 
-                    double baseY = pos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(2);
-                    Vector3d pos1 = new Vector3d(pos.getX(), baseY + LINE_GAP / 2.0 + LINE1_NUDGE, pos.getZ());
-                    Vector3d pos2 = new Vector3d(pos.getX(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, pos.getZ());
+                    double baseY = pos.y() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(2);
+                    Vector3d pos1 = new Vector3d(pos.x(), baseY + LINE_GAP / 2.0 + LINE1_NUDGE, pos.z());
+                    Vector3d pos2 = new Vector3d(pos.x(), baseY - LINE_GAP / 2.0 + LINE2_NUDGE, pos.z());
 
                     spawnVirtualEntity(newNet1, pos1, initText, uuid, pos, s.getPlayerNetworkId(), store);
                     spawnVirtualEntity(newNet2, pos2, "", uuid, pos, s.getPlayerNetworkId(), store);
                 } else {
                     s.setLine2NetId(-1);
                     s.setLine3NetId(-1);
-                    Vector3d bubblePos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(1), pos.getZ());
+                    Vector3d bubblePos = new Vector3d(pos.x(), pos.y() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(1), pos.z());
                     spawnVirtualEntity(newNet1, bubblePos, initText, uuid, pos, s.getPlayerNetworkId(), store);
                 }
 
@@ -2260,7 +2263,7 @@ public class SpeechManager {
                     int piNetId = world.getEntityStore().takeNextNetworkId();
                     s.setPageIndicatorNetId(piNetId);
                     int lc = s.getLineCount();
-                    Vector3d piPos = new Vector3d(pos.getX(), pos.getY() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(lc) + getPageIndicatorYOffset(lc), pos.getZ());
+                    Vector3d piPos = new Vector3d(pos.x(), pos.y() + BUBBLE_Y_OFFSET + s.getHeightAdjust() + getBubbleYAdjust(lc) + getPageIndicatorYOffset(lc), pos.z());
                     spawnVirtualEntity(piNetId, piPos, superscriptPage(s.getCurrentPage()), uuid, pos, s.getPlayerNetworkId(), store);
                 }
 
@@ -2449,7 +2452,7 @@ public class SpeechManager {
         SpeechState ss = activeSpeech.get(speakerUuid);
         double ha = ss != null ? ss.getHeightAdjust() : 0.0;
         float adjustedY = (float) (particleYOffset + getBubbleYAdjust(lineCount) + ha);
-        com.hypixel.hytale.protocol.Vector3f offset = new com.hypixel.hytale.protocol.Vector3f(0f, adjustedY, 0f);
+        org.joml.Vector3f offset = new org.joml.Vector3f(0f, adjustedY, 0f);
         lastParticleSendTime.put(speakerUuid, System.currentTimeMillis());
 
         String speakerLowerName = ss != null ? ss.getSpeakerLowerName() : null;
@@ -2502,7 +2505,7 @@ public class SpeechManager {
         SpeechState ss = activeSpeech.get(speakerUuid);
         double ha = ss != null ? ss.getHeightAdjust() : 0.0;
         float adjustedY = (float) (particleYOffset + getBubbleYAdjust(lineCount) + ha);
-        com.hypixel.hytale.protocol.Vector3f offset = new com.hypixel.hytale.protocol.Vector3f(0f, adjustedY, 0f);
+        org.joml.Vector3f offset = new org.joml.Vector3f(0f, adjustedY, 0f);
 
         String speakerLowerName = ss != null ? ss.getSpeakerLowerName() : null;
         Map<String, SpawnModelParticles> packetCache = new HashMap<>();
@@ -2520,7 +2523,7 @@ public class SpeechManager {
     }
 
     private SpawnModelParticles buildParticlePacket(String systemId, int entityNetId, Color color,
-                                                     com.hypixel.hytale.protocol.Vector3f offset) {
+                                                     org.joml.Vector3f offset) {
         ModelParticle particle = new ModelParticle(
             systemId, 1.0f, color, EntityPart.Self, null, offset, null, false
         );
@@ -2581,7 +2584,7 @@ public class SpeechManager {
                 try {
                     double ha = s.getHeightAdjust();
                     float adjustedY = (float) (particleYOffset + getBubbleYAdjust(s.getLineCount()) + ha);
-                    var offset = new com.hypixel.hytale.protocol.Vector3f(0f, adjustedY, 0f);
+                    var offset = new org.joml.Vector3f(0f, adjustedY, 0f);
                     String speakerLowerName = s.getSpeakerLowerName();
                     Map<String, SpawnModelParticles> packetCache = new HashMap<>();
                     lastParticleSendTime.put(uuid, System.currentTimeMillis());
@@ -2839,12 +2842,12 @@ public class SpeechManager {
 
         Vector3d pos = tc.getPosition();
         Vector3d dir = headRot.getDirection();
-        double px = pos.getX() + dir.getX() * 0.6;
-        double py = pos.getY() + 1.5;
-        double pz = pos.getZ() + dir.getZ() * 0.6;
+        double px = pos.x() + dir.x() * 0.6;
+        double py = pos.y() + 1.5;
+        double pz = pos.z() + dir.z() * 0.6;
 
         SpawnParticleSystem packet = new SpawnParticleSystem(
-            "BC_Yell", new Position(px, py, pz), null, 0.08f, null);
+            "BC_Yell", new Position(px, py, pz), null, 0.08f, null, 0f);
 
         // Check if speaker is in a channel
         SpeechState state = activeSpeech.get(speakerUuid);
@@ -2877,8 +2880,8 @@ public class SpeechManager {
                     TransformComponent vtc = vStore.getComponent(vRef, TransformComponent.getComponentType());
                     if (vtc != null) {
                         Vector3d vPos = vtc.getPosition();
-                        double dx = vPos.getX() - pos.getX();
-                        double dz = vPos.getZ() - pos.getZ();
+                        double dx = vPos.x() - pos.x();
+                        double dz = vPos.z() - pos.z();
                         if (dx * dx + dz * dz > (double) yellPartRange * yellPartRange) continue;
                     }
                 }
@@ -2947,7 +2950,7 @@ public class SpeechManager {
                 if (delay == 0) {
                     try {
                         SoundUtil.playSoundEvent3dToPlayer(ref, fSoundIdx, SoundCategory.SFX,
-                            pos.getX(), pos.getY(), pos.getZ(), previewVol, fPitch, store);
+                            pos.x(), pos.y(), pos.z(), previewVol, fPitch, store);
                     } catch (Exception ignored) {}
                 } else {
                     scheduler.schedule(() -> {
@@ -2959,7 +2962,7 @@ public class SpeechManager {
                             Vector3d p = t != null ? t.getPosition() : pos;
                             try {
                                 SoundUtil.playSoundEvent3dToPlayer(r, fSoundIdx, SoundCategory.SFX,
-                                    p.getX(), p.getY(), p.getZ(), previewVol, fPitch, s);
+                                    p.x(), p.y(), p.z(), previewVol, fPitch, s);
                             } catch (Exception ignored) {}
                         });
                     }, delay, TimeUnit.MILLISECONDS);
@@ -3078,7 +3081,7 @@ public class SpeechManager {
 
             try {
                 SoundUtil.playSoundEvent3dToPlayer(viewerRef, soundIdx, SoundCategory.SFX,
-                    pos.getX(), pos.getY(), pos.getZ(), vol, pitch, viewerStore);
+                    pos.x(), pos.y(), pos.z(), vol, pitch, viewerStore);
             } catch (Exception e) {
                 // Silently ignore — viewer may have disconnected
             }
@@ -3234,6 +3237,330 @@ public class SpeechManager {
             sb.append(words[i]);
         }
         return sb.toString();
+    }
+
+    // ===================================================================
+    // NPC speech bubbles (additive — HyCitizens integration).
+    // Fully independent of the per-player speech system above: does NOT
+    // touch activeSpeech / SpeechState / player themes. Reuses only the
+    // shared render primitives (bubble particle + nameplate virtual entity).
+    // Single line, fixed display duration. Keyed by the NPC's network id.
+    // ===================================================================
+    private static final long NPC_BUBBLE_DURATION_MS = 5000;
+    private static final int NPC_BUBBLE_MAX_CHARS = 80;
+
+    private final Map<Integer, NpcBubble> activeNpcBubbles = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong npcBubbleGen = new java.util.concurrent.atomic.AtomicLong();
+
+    private NpcBubbleColorStorage npcColorStorage;
+    // Dedup: one custom-tinted spawner prefix per "HEX|L"/"HEX|D" so many NPCs can share a color's spawners.
+    private final Map<String, String> npcColorPrefixes = new ConcurrentHashMap<>();
+
+    public void setNpcColorStorage(NpcBubbleColorStorage storage) { this.npcColorStorage = storage; }
+
+    private static final class NpcBubble {
+        final int npcNetId;
+        final int nameplateNetId;
+        final int tileCount;
+        final long gen;
+        final UUID worldUuid;
+        final Vector3d npcPos;
+        final String npcId;
+        volatile ScheduledFuture<?> despawnFuture;
+        volatile ScheduledFuture<?> particleLoop;
+        NpcBubble(int npcNetId, int nameplateNetId, int tileCount, long gen,
+                  UUID worldUuid, Vector3d npcPos, String npcId) {
+            this.npcNetId = npcNetId;
+            this.nameplateNetId = nameplateNetId;
+            this.tileCount = tileCount;
+            this.gen = gen;
+            this.worldUuid = worldUuid;
+            this.npcPos = npcPos;
+            this.npcId = npcId;
+        }
+    }
+
+    /**
+     * Show a single-line speech bubble above any entity (e.g. a HyCitizens NPC).
+     * Additive and independent of the per-player speech system. Safe to call from
+     * any thread — work is dispatched onto the entity's world thread.
+     *
+     * @param entityRef the entity to show the bubble above (NPC or player)
+     * @param worldUuid the entity's world UUID for viewer culling (may be null)
+     * @param text      the message text
+     */
+    public void showEntityBubble(Ref<EntityStore> entityRef, UUID worldUuid, String text) {
+        showEntityBubble(entityRef, worldUuid, null, text);
+    }
+
+    /**
+     * @param npcId stable HyCitizens NPC id used to look up a per-NPC bubble color
+     *              (null = default dark bubble).
+     */
+    public void showEntityBubble(Ref<EntityStore> entityRef, UUID worldUuid, String npcId, String text) {
+        if (entityRef == null || text == null || text.isBlank()) return;
+        final World world;
+        try {
+            world = entityRef.getStore().getExternalData().getWorld();
+        } catch (Exception e) {
+            return;
+        }
+        if (world == null) return;
+        final String msg = text.length() > NPC_BUBBLE_MAX_CHARS
+            ? text.substring(0, NPC_BUBBLE_MAX_CHARS) : text;
+        world.execute(() -> {
+            try {
+                if (!entityRef.isValid()) return;
+                Store<EntityStore> store = entityRef.getStore();
+                NetworkId nid = store.getComponent(entityRef, NetworkId.getComponentType());
+                TransformComponent tc = store.getComponent(entityRef, TransformComponent.getComponentType());
+                if (nid == null || tc == null) return;
+                showNpcBubbleResolved(nid.getId(), tc.getPosition(), worldUuid, npcId, msg, world);
+            } catch (Exception e) {
+                LOGGER.at(java.util.logging.Level.WARNING).log("NPC bubble error: " + e.getMessage());
+            }
+        });
+    }
+
+    /** World-thread: spawn nameplate + bubble particle, schedule despawn. */
+    private void showNpcBubbleResolved(int npcNetId, Vector3d npcPos, UUID worldUuid,
+                                       String npcId, String text, World world) {
+        clearEntityBubble(npcNetId); // replace any existing bubble on this NPC
+
+        int tileCount = selectTileCount(getWeightedLength(text));
+        long gen = npcBubbleGen.incrementAndGet();
+        int nameplateNetId = world.getEntityStore().takeNextNetworkId();
+
+        List<PlayerRef> viewers = getNpcViewers(worldUuid, npcPos);
+
+        // Ensure each viewer has the bubble spawner configs registered
+        for (PlayerRef viewer : viewers) {
+            if (viewer.getPacketHandler() == null) continue;
+            if (baseParticlesRegistered.add(viewer.getUuid())) {
+                sendCombinedParticleConfigs(viewer);
+            }
+        }
+
+        // Nameplate text entity mounted to the NPC (single line)
+        Vector3d textPos = new Vector3d(npcPos.x(),
+            npcPos.y() + BUBBLE_Y_OFFSET + getBubbleYAdjust(1), npcPos.z());
+        spawnNpcNameplate(nameplateNetId, textPos, text, npcNetId, npcPos, viewers);
+
+        // Bubble graphic attached to the NPC entity. The particle has a short hold
+        // lifespan (~320ms), so — exactly like the player bubble path — it is re-sent
+        // on a loop to stay visible for the full display duration.
+        sendNpcBubbleParticle(npcNetId, npcId, tileCount, viewers);
+
+        NpcBubble bubble = new NpcBubble(npcNetId, nameplateNetId, tileCount, gen, worldUuid, npcPos, npcId);
+        activeNpcBubbles.put(npcNetId, bubble);
+        scheduleNpcParticleLoop(npcNetId, gen, world);
+        bubble.despawnFuture = scheduler.schedule(
+            () -> world.execute(() -> despawnNpcBubble(npcNetId, gen)),
+            NPC_BUBBLE_DURATION_MS, TimeUnit.MILLISECONDS);
+    }
+
+    /** Send the bubble-background particle (attached to the NPC entity) to the given viewers. */
+    private void sendNpcBubbleParticle(int npcNetId, String npcId, int tileCount, List<PlayerRef> viewers) {
+        org.joml.Vector3f offset = new org.joml.Vector3f(
+            0f, (float) (particleYOffset + getBubbleYAdjust(1)), 0f);
+        String spawner = resolveNpcSpawner(npcId, tileCount, false);
+        Map<String, SpawnModelParticles> packetCache = new HashMap<>();
+        for (PlayerRef viewer : viewers) {
+            try {
+                if (viewer.getPacketHandler() == null) continue;
+                SpawnModelParticles packet = packetCache.computeIfAbsent(spawner,
+                    name -> buildParticlePacket(name, npcNetId, null, offset));
+                viewer.getPacketHandler().writeNoCache(packet);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    /** Keep the short-lived bubble particle alive by re-sending it on the standard cadence. */
+    private void scheduleNpcParticleLoop(int npcNetId, long gen, World world) {
+        ScheduledFuture<?> f = scheduler.schedule(() -> {
+            NpcBubble b = activeNpcBubbles.get(npcNetId);
+            if (b == null || b.gen != gen) return;
+            world.execute(() -> {
+                NpcBubble b2 = activeNpcBubbles.get(npcNetId);
+                if (b2 == null || b2.gen != gen) return;
+                try {
+                    sendNpcBubbleParticle(npcNetId, b2.npcId, b2.tileCount, getNpcViewers(b2.worldUuid, b2.npcPos));
+                } catch (Exception ignored) {}
+                scheduleNpcParticleLoop(npcNetId, gen, world);
+            });
+        }, BUBBLE_PARTICLE_RESPAWN_MS, TimeUnit.MILLISECONDS);
+        NpcBubble b = activeNpcBubbles.get(npcNetId);
+        if (b != null) b.particleLoop = f;
+    }
+
+    private void spawnNpcNameplate(int netId, Vector3d position, String text,
+                                   int npcNetId, Vector3d npcPos, List<PlayerRef> viewers) {
+        IntangibleUpdate intangibleUpdate = new IntangibleUpdate();
+        NameplateUpdate nameplateUpdate = new NameplateUpdate(text);
+
+        ModelUpdate modelUpdate;
+        if (cachedFloatingTextModel != null) {
+            modelUpdate = new ModelUpdate(cachedFloatingTextModel, 0.001f);
+        } else {
+            com.hypixel.hytale.protocol.Model fallbackModel = new com.hypixel.hytale.protocol.Model();
+            fallbackModel.scale = 0.001f;
+            modelUpdate = new ModelUpdate(fallbackModel, 1.0f);
+        }
+
+        ModelTransform mt = new ModelTransform();
+        mt.position = PositionUtil.toPositionPacket(position);
+        mt.bodyOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
+        mt.lookOrientation = PositionUtil.toDirectionPacket(new Rotation3f(0, 0, 0));
+        TransformUpdate transformUpdate = new TransformUpdate(mt);
+
+        MountedUpdate mountedUpdate = new MountedUpdate(npcNetId,
+            new org.joml.Vector3f(
+                (float) (position.x() - npcPos.x()),
+                (float) (position.y() - npcPos.y()),
+                (float) (position.z() - npcPos.z())),
+            MountController.Minecart, null);
+
+        ComponentUpdate[] components = new ComponentUpdate[]{
+            intangibleUpdate, nameplateUpdate, modelUpdate, transformUpdate, mountedUpdate};
+        EntityUpdate entityUpdate = new EntityUpdate(netId, null, components);
+        EntityUpdates spawnPacket = new EntityUpdates(null, new EntityUpdate[]{entityUpdate});
+
+        for (PlayerRef viewer : viewers) {
+            if (viewer.getPacketHandler() == null) continue;
+            viewer.getPacketHandler().writeNoCache(spawnPacket);
+        }
+    }
+
+    private void despawnNpcBubble(int npcNetId, long gen) {
+        NpcBubble bubble = activeNpcBubbles.get(npcNetId);
+        if (bubble == null || bubble.gen != gen) return;
+        activeNpcBubbles.remove(npcNetId);
+        if (bubble.particleLoop != null) bubble.particleLoop.cancel(false);
+
+        List<PlayerRef> viewers = getNpcViewers(bubble.worldUuid, null);
+        org.joml.Vector3f offset = new org.joml.Vector3f(
+            0f, (float) (particleYOffset + getBubbleYAdjust(1)), 0f);
+        String fadeSpawner = resolveNpcSpawner(bubble.npcId, bubble.tileCount, true);
+        EntityUpdates despawnPacket = new EntityUpdates(new int[]{bubble.nameplateNetId}, null);
+        Map<String, SpawnModelParticles> cache = new HashMap<>();
+        for (PlayerRef viewer : viewers) {
+            try {
+                if (viewer.getPacketHandler() == null) continue;
+                SpawnModelParticles fade = cache.computeIfAbsent(fadeSpawner,
+                    name -> buildParticlePacket(name, npcNetId, null, offset));
+                viewer.getPacketHandler().writeNoCache(fade);
+                viewer.getPacketHandler().writeNoCache(despawnPacket);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    /** Dismiss an active NPC bubble by the NPC's network id (call on world thread). */
+    public void clearEntityBubble(int npcNetId) {
+        NpcBubble existing = activeNpcBubbles.get(npcNetId);
+        if (existing == null) return;
+        if (existing.despawnFuture != null) existing.despawnFuture.cancel(false);
+        despawnNpcBubble(npcNetId, existing.gen);
+    }
+
+    /** Nearby players in the NPC's world (no player-speech-state coupling). */
+    private List<PlayerRef> getNpcViewers(UUID worldUuid, Vector3d pos) {
+        List<PlayerRef> viewers = new ArrayList<>();
+        for (PlayerRef p : Universe.get().getPlayers()) {
+            Ref<EntityStore> ref = p.getReference();
+            if (ref == null || !ref.isValid()) continue;
+            if (worldUuid != null && !worldUuid.equals(p.getWorldUuid())) continue;
+            if (pos != null) {
+                try {
+                    Store<EntityStore> vs = ref.getStore();
+                    TransformComponent vtc = vs.getComponent(ref, TransformComponent.getComponentType());
+                    if (vtc != null) {
+                        Vector3d vp = vtc.getPosition();
+                        double dx = vp.x() - pos.x();
+                        double dz = vp.z() - pos.z();
+                        if (dx * dx + dz * dz > VIEW_RANGE_SQ) continue;
+                    }
+                } catch (IllegalStateException e) {
+                    continue;
+                }
+            }
+            viewers.add(p);
+        }
+        return viewers;
+    }
+
+    // ---- Per-NPC bubble color (deduped tinted spawners, shared across NPCs) ----
+
+    /** Resolve the spawner name for an NPC's bubble: its configured color, else default dark. */
+    private String resolveNpcSpawner(String npcId, int tileCount, boolean fade) {
+        String base = "BC_Bubble_" + tileCount;
+        if (npcColorStorage != null && npcId != null) {
+            NpcBubbleColorStorage.NpcColor c = npcColorStorage.get(npcId);
+            if (c != null && c.hex != null) {
+                String prefix = ensureNpcColorSpawners(c.hex, c.lightMode, false);
+                if (prefix != null) {
+                    base = prefix + "_" + (c.lightMode ? "Bubble_Light_" : "Bubble_") + tileCount;
+                }
+            }
+        }
+        return fade ? base + "_Fade" : base;
+    }
+
+    /** Register (once per hex+mode) tinted spawners for a color; returns the spawner prefix. */
+    private String ensureNpcColorSpawners(String hex, boolean lightMode, boolean broadcast) {
+        String key = hex.toUpperCase() + (lightMode ? "|L" : "|D");
+        String existing = npcColorPrefixes.get(key);
+        if (existing != null) return existing;
+
+        Color tint = parseHexColor(hex);
+        if (tint == null) return null;
+
+        // Deterministic synthetic UUID per color key → reproducible spawner prefix.
+        UUID synthetic = UUID.nameUUIDFromBytes(
+            ("BCNPC|" + key).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        try {
+            registerSpeakerCustomColor(synthetic, -1, tint);
+        } catch (Exception e) {
+            LOGGER.at(java.util.logging.Level.WARNING).log("NPC color register error: " + e.getMessage());
+            return null;
+        }
+        String prefix = customColorPrefixes.get(synthetic);
+        if (prefix == null) return null;
+        npcColorPrefixes.put(key, prefix);
+
+        if (broadcast) {
+            UpdateParticleSpawners csp = customColorSpawnerPackets.get(synthetic);
+            UpdateParticleSystems css = customColorSystemPackets.get(synthetic);
+            for (PlayerRef p : Universe.get().getPlayers()) {
+                if (p.getPacketHandler() == null) continue;
+                if (csp != null) p.getPacketHandler().writeNoCache(csp);
+                if (css != null) p.getPacketHandler().writeNoCache(css);
+            }
+            restoreEntityScalesViaTrackerResend(); // UpdateParticleSpawners resets entity-tool scales
+        }
+        return prefix;
+    }
+
+    /** Set an NPC's bubble color (persisted + spawners registered/broadcast). World thread. */
+    public void applyNpcColor(String npcId, String hex, boolean lightMode) {
+        if (npcColorStorage == null || npcId == null || hex == null) return;
+        npcColorStorage.put(npcId, hex, lightMode);
+        npcColorStorage.saveAsync(scheduler);
+        ensureNpcColorSpawners(hex, lightMode, true);
+    }
+
+    /** Clear an NPC's bubble color (reverts to default dark on next interaction). */
+    public void clearNpcColor(String npcId) {
+        if (npcColorStorage == null || npcId == null) return;
+        npcColorStorage.remove(npcId);
+        npcColorStorage.saveAsync(scheduler);
+    }
+
+    /** Register tinted spawners for all persisted NPC colors (call once at startup). */
+    public void registerConfiguredNpcColors() {
+        if (npcColorStorage == null) return;
+        for (NpcBubbleColorStorage.NpcColor c : npcColorStorage.all().values()) {
+            if (c != null && c.hex != null) ensureNpcColorSpawners(c.hex, c.lightMode, false);
+        }
     }
 
 }

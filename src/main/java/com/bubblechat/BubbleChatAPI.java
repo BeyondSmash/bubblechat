@@ -1,8 +1,11 @@
 package com.bubblechat;
 
+import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 import javax.annotation.Nonnull;
+import java.util.UUID;
 /**
  * Public API for other plugins to trigger BubbleChat speech bubbles.
  *
@@ -36,6 +39,22 @@ public final class BubbleChatAPI {
     public static boolean showBubble(@Nonnull PlayerRef playerRef, @Nonnull String text) {
         if (manager == null) return false;
         manager.onChat(playerRef, text);
+        return true;
+    }
+
+    /**
+     * Show a single-line speech bubble above any entity (e.g. an NPC), not just a player.
+     * Additive/experimental — independent of the per-player speech system. The bubble
+     * auto-dismisses after a few seconds. Safe to call from any thread.
+     *
+     * @param entityRef the entity to show the bubble above
+     * @param worldUuid the entity's world UUID for viewer culling (may be null)
+     * @param text      the message text
+     * @return true if accepted, false if BubbleChat is not ready
+     */
+    public static boolean showEntityBubble(@Nonnull Ref<EntityStore> entityRef, UUID worldUuid, @Nonnull String text) {
+        if (manager == null) return false;
+        manager.showEntityBubble(entityRef, worldUuid, text);
         return true;
     }
 

@@ -21,18 +21,21 @@ public class BCCommand extends AbstractPlayerCommand {
     private final PlayerBubblePrefsStorage prefsStorage;
     private final ChannelStorage channelStorage;
     private final BubbleChatConfig serverConfig;
+    private final NpcBubbleColorStorage npcColorStorage;
 
     public BCCommand(SpeechManager manager, BubbleThemeStorage themeStorage,
                      PlayerBubblePrefsStorage prefsStorage, ChannelStorage channelStorage,
-                     BubbleChatConfig serverConfig) {
+                     BubbleChatConfig serverConfig, NpcBubbleColorStorage npcColorStorage) {
         super("bchat", "Toggle speech bubbles");
-        setPermissionGroup(null);
+        // U5: setPermissionGroup(null) NPEs (calls gameMode.ordinal()). Omitting
+        // the call = no permission restriction, which is what null meant before.
         setAllowsExtraArguments(true);
         this.manager = manager;
         this.themeStorage = themeStorage;
         this.prefsStorage = prefsStorage;
         this.channelStorage = channelStorage;
         this.serverConfig = serverConfig;
+        this.npcColorStorage = npcColorStorage;
     }
 
     @Override
@@ -122,6 +125,19 @@ public class BCCommand extends AbstractPlayerCommand {
             return;
         }
 
+
+        if (trimmed.equalsIgnoreCase("npc")) {
+            if (!HyCitizensNpcLookup.isAvailable()) {
+                context.sendMessage(Message.raw("HyCitizens is not installed — NPC bubble colors unavailable."));
+                return;
+            }
+            Player player = store.getComponent(ref, Player.getComponentType());
+            if (player != null) {
+                player.getPageManager().openCustomPage(ref, store,
+                    new NpcColorsListPage(manager, themeStorage, prefsStorage, npcColorStorage, playerRef, uuid));
+            }
+            return;
+        }
 
         if (trimmed.toLowerCase().startsWith("text")) {
             handleText(context, trimmed, uuid);
@@ -259,6 +275,7 @@ public class BCCommand extends AbstractPlayerCommand {
         context.sendMessage(Message.raw("/bchat theme light|dark - Set mode"));
         context.sendMessage(Message.raw("/bchat theme color <#RRGGBB|reset> - Set tint"));
         context.sendMessage(Message.raw("/bchat text instant - Toggle instant text reveal"));
+        context.sendMessage(Message.raw("/bchat npc - Set bubble colors for nearby NPCs"));
         context.sendMessage(Message.raw("/bchat status - Show settings"));
     }
 }

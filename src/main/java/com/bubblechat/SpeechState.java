@@ -1,6 +1,6 @@
 package com.bubblechat;
 
-import com.hypixel.hytale.math.vector.Vector3d;
+import org.joml.Vector3d;
 import com.hypixel.hytale.server.core.universe.world.World;
 
 import java.util.UUID;

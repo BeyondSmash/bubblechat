@@ -35,6 +35,7 @@ public class BCPlugin extends JavaPlugin {
     private PlayerBubblePrefsStorage prefsStorage;
     private ChannelStorage channelStorage;
     private BubbleChatConfig serverConfig;
+    private NpcBubbleColorStorage npcColorStorage;
     private ScheduledExecutorService scheduler;
 
     public BCPlugin(@Nonnull JavaPluginInit init) {
@@ -57,11 +58,14 @@ public class BCPlugin extends JavaPlugin {
 
         serverConfig = BubbleChatConfig.load(getDataDirectory());
 
+        npcColorStorage = new NpcBubbleColorStorage(getDataDirectory());
+
         speechManager = new SpeechManager();
         speechManager.setThemeStorage(themeStorage);
         speechManager.setPrefsStorage(prefsStorage);
         speechManager.setChannelStorage(channelStorage);
         speechManager.setServerConfig(serverConfig);
+        speechManager.setNpcColorStorage(npcColorStorage);
 
         BubbleChatAPI.init(speechManager);
     }
@@ -79,9 +83,15 @@ public class BCPlugin extends JavaPlugin {
         });
         speechManager.setScheduler(scheduler);
 
+        // Register tinted spawners for all persisted per-NPC colors
+        speechManager.registerConfiguredNpcColors();
+
         // Register command
-        getCommandRegistry().registerCommand(new BCCommand(speechManager, themeStorage, prefsStorage, channelStorage, serverConfig));
+        getCommandRegistry().registerCommand(new BCCommand(speechManager, themeStorage, prefsStorage, channelStorage, serverConfig, npcColorStorage));
         LOGGER.atInfo().log("Registered /bchat command");
+
+        // Optional HyCitizens integration — NPC speech bubbles. No-op if HyCitizens absent.
+        HyCitizensBridge.register(speechManager);
 
         // Send custom particle configs to players on join + restore persisted settings
         getEventRegistry().register(PlayerConnectEvent.class, event -> {
